@@ -36,8 +36,9 @@ luna-core/
 
 #### Speech-to-Text (STT)
 
-http
+```http
   POST /api/stt/stream
+```
 
 | Parameter | Type   | Description                            |
 | :-------- | :----- | :------------------------------------- |
@@ -47,8 +48,9 @@ http
 
 #### Text Generation (LLM)
 
-http
+```http
   POST /api/llm/generate
+```
 
 | Parameter | Type   | Description                            |
 | :-------- | :----- | :------------------------------------- |
@@ -57,8 +59,9 @@ http
 
 #### Text-to-Speech (TTS)
 
-http
+```http
   POST /api/tts/speak
+```
 
 | Parameter | Type   | Description                            |
 | :-------- | :----- | :------------------------------------- |
@@ -67,8 +70,9 @@ http
 
 #### Vision Tagging
 
-http
+```http
   POST /api/vision/tag
+```
 
 | Parameter | Type   | Description                            |
 | :-------- | :----- | :------------------------------------- |
@@ -77,8 +81,9 @@ http
 
 #### Plugin: Web Search
 
-http
+```http
   POST /api/plugins/search
+```
 
 | Parameter | Type   | Description                            |
 | :-------- | :----- | :------------------------------------- |
