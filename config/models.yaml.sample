@@ -1,0 +1,72 @@
+# config/models.yaml.sample
+
+emotion:
+  # 로컬 모델 디렉터리
+  model_dir: "./checkpoints/LunaEmotion"
+
+  # 토크나이저 디렉터리 (보통 model_dir와 같음)
+  tokenizer_dir: "./checkpoints/LunaEmotion"
+
+  # HuggingFace 허브 모델 이름 (use_local=false 일 때)
+  hub_model_name: "google/electra-small-discriminator"
+
+  # 예측 확률 필터 임계값
+  threshold: 0.5
+
+  # 감정 레이블 리스트 (28개)
+  label_list:
+    - admiration
+    - amusement
+    - anger
+    - annoyance
+    - approval
+    - caring
+    - confusion
+    - curiosity
+    - desire
+    - disappointment
+    - disapproval
+    - disgust
+    - embarrassment
+    - excitement
+    - fear
+    - gratitude
+    - grief
+    - joy
+    - love
+    - nervousness
+    - optimism
+    - pride
+    - realization
+    - relief
+    - sadness
+    - surprise
+    - neutral
+    - something_else
+
+multi_intent:
+  # 로컬 모델 디렉터리
+  model_dir: "./checkpoints/LunaMultiIntent"
+
+  # 토크나이저 디렉터리 (보통 model_dir와 같음)
+  tokenizer_dir: "./checkpoints/LunaMultiIntent"
+
+  # HuggingFace 허브 모델 이름 (use_local=false 일 때)
+  hub_model_name: "google/bert_uncased_L-2_H-128_A-2"
+
+  # 예측 확률 필터 임계값
+  threshold: 0.5
+
+  # 인텐트 레이블 리스트 (예시 일부만)
+  label_list:
+    - accept_reservations
+    - account_blocked
+    - alarm
+    - application_status
+    - apr
+    - are_you_a_bot
+    - balance
+    - bill_balance
+    - bill_due
+    - book_flight
+    # ... (전체 147개 중 일부, 실제 config에서는 전체 포함 필요)
