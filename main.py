@@ -13,24 +13,32 @@ L.U.N.A. Core Backend Entry Point
     uvicorn main:app --host 0.0.0.0 --port 8000
 """
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile
+from fastapi.params import File
 from pydantic import BaseModel
+import torch
 
 # 서비스 모듈 import (추후 구현)
 from services.emotion import EmotionService
 from services.multi_intent import MultiIntentService
-# from services.tts import TTSService
+from services.vision import VisionService
+from services.tts import TTSService
 
 # FastAPI 앱 초기화
 app = FastAPI(
     title="L.U.N.A. Core API",
     description="L.U.N.A. Core API",
-    version="0.1.0",
+    version="1.0.0",
 )
 
 # 서비스 인스턴스 생성
 emotion_service = EmotionService()
 multi_intent_service = MultiIntentService()
+vision_service = VisionService()
+tts_service = TTSService(device="cuda" if torch.cuda.is_available() else "cpu")
+
+from fastapi.staticfiles import StaticFiles
+app.mount("/outputs", StaticFiles(directory="outputs"), name="outputs")
 
 # Request / Response 스키마 정의
 class TextRequest(BaseModel):
@@ -39,6 +47,9 @@ class TextRequest(BaseModel):
 class AnalyzeResponse(BaseModel):
     emotion: dict[str, float]
     intents: dict[str, float]
+    
+class VisionResponse(BaseModel):
+    answer: str
 
 class SynthesizeResponse(BaseModel):
     audio_url: str
@@ -69,6 +80,27 @@ def analyze_text(request: TextRequest):
         intents=intents
     )
     
+# Vision Analysis Endpoint
+@app.post("/analyze/vision", response_model=VisionResponse, tags=["Analysis"])
+async def analyze_vision(file: UploadFile = File(...)):
+    """
+    이미지를 입력받아 Vision 분석 결과를 반환합니다.
+
+    Args:
+        file (UploadFile): 분석할 이미지 파일
+    Returns:
+        AnalyzeResponse: 분석된 감정 및 인텐트 확률 분포
+    """
+    image_bytes = await file.read()
+    try:
+        answer = await vision_service.predict(image_bytes)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"[L.U.N.A. Vision] 분석 중 오류 발생: {str(e)}")
+
+    return VisionResponse(
+        answer=answer
+    )
+
 # Text-to-Speech Synthesis Endpoint
 @app.post("/synthesize", response_model=SynthesizeResponse, tags=["Synthesis"])
 def synthesize_text(request: TextRequest):
@@ -80,10 +112,13 @@ def synthesize_text(request: TextRequest):
     Returns:
         SynthesizeResponse: 합성된 음성 파일 URL
     """
-    # TODO: 실제 TTS 음성 합성 로직 구현
-
-    # 예시 응답
-    audio_url = "https://example.com/audio/12345"
+    try:
+        audio_url = tts_service.synthesize(request.text)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"[L.U.N.A. TTS] 합성 중 오류 발생: {str(e)}")
+    
     return SynthesizeResponse(
         audio_url=audio_url
     )
