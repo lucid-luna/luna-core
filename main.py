@@ -13,16 +13,19 @@ L.U.N.A. Core Backend Entry Point
     uvicorn main:app --host 0.0.0.0 --port 8000
 """
 
+from typing import Any
+
 from fastapi import FastAPI, HTTPException, UploadFile
+from fastapi.responses import JSONResponse
 from fastapi.params import File
 from pydantic import BaseModel
 import torch
 
-# 서비스 모듈 import (추후 구현)
 from services.emotion import EmotionService
 from services.multi_intent import MultiIntentService
 from services.vision import VisionService
 from services.tts import TTSService
+from services.translator import TranslatorService
 from utils.style_map import get_style_from_emotion, get_top_emotion
 
 # FastAPI 앱 초기화
@@ -37,6 +40,7 @@ emotion_service = EmotionService()
 multi_intent_service = MultiIntentService()
 vision_service = VisionService()
 tts_service = TTSService(device="cuda" if torch.cuda.is_available() else "cpu")
+translator_service = TranslatorService()
 
 from fastapi.staticfiles import StaticFiles
 app.mount("/outputs", StaticFiles(directory="outputs"), name="outputs")
@@ -44,6 +48,8 @@ app.mount("/outputs", StaticFiles(directory="outputs"), name="outputs")
 # Request / Response 스키마 정의
 class TextRequest(BaseModel):
     text: str
+    style: str | None = None
+    style_weight: float | None = None
 
 class AnalyzeResponse(BaseModel):
     emotion: dict[str, float]
@@ -54,6 +60,14 @@ class VisionResponse(BaseModel):
 
 class SynthesizeResponse(BaseModel):
     audio_url: str
+    
+class TranslateRequest(BaseModel):
+    text: str
+    from_lang: str
+    to_lang: str
+    
+class TranslateResponse(BaseModel):
+    translated_text: str
     
 # Health Check Endpoint
 @app.get("/health", tags=["Utility"])
@@ -111,23 +125,39 @@ def synthesize_text(request: TextRequest):
     Args:
         request (TextRequest): 합성할 텍스트
     Returns:
-        SynthesizeResponse: 합성된 음성 파일 URL
+        JSONResponse: 합성된 음성 파일의 URL 및 스타일 정보
     """
     try:
-        emotions = emotion_service.predict(request.text)
-        top_emotion = get_top_emotion(emotions)
-        style_name, style_strength = get_style_from_emotion(top_emotion)
-        
-        audio_url = tts_service.synthesize(
+        result: dict[str, Any] = tts_service.synthesize(
             text=request.text,
-            style=style_name,
-            style_weight=style_strength
+            style=request.style,
+            style_weight=request.style_weight
         )
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"[L.U.N.A. TTS] 합성 중 오류 발생: {str(e)}")
     
-    return SynthesizeResponse(
-        audio_url=audio_url
+    return JSONResponse(
+        content=result
     )
+    
+@app.post("/translate", response_model=TranslateResponse, tags=["Translation"])
+def translate_text(request: TranslateRequest):
+    """
+    텍스트 번역을 위한 엔드포인트
+
+    Args:
+        request (TranslateRequest): 번역할 텍스트 및 언어 정보
+    Returns:
+        TranslateResponse: 번역된 텍스트
+    """
+    try:
+        translated = translator_service.translate(
+            text=request.text,
+            from_lang=request.from_lang,
+            to_lang=request.to_lang
+        )
+        return TranslateResponse(translated_text=translated)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"[L.U.N.A. Translate] 번역 중 오류 발생: {str(e)}")

@@ -15,6 +15,7 @@ import soundfile as sf
 from pathlib import Path
 
 from fastapi import HTTPException
+from fastapi.responses import JSONResponse
 
 from utils.config import load_config_dict
 from utils.style_map import get_style_from_emotion, get_top_emotion
@@ -45,16 +46,16 @@ class TTSService:
         
         self.emotion_service = EmotionService()
     
-    def synthesize(self, text: str, style: str = "Neutral", style_weight: float = 1.0) -> str:
+    def synthesize(self, text: str, style: str = None, style_weight: float =  None) -> dict:
         """
         주어진 텍스트를 TTS 모델을 사용하여 음성으로 합성하고,
-        합성된 오디오 파일의 URL을 반환합니다.
+        음성 파일의 URL과 스타일 정보를 반환합니다.
         
         Args:
             text (str): 합성할 텍스트
             
         Returns:
-            str: 합성된 오디오 파일의 URL
+            dict: 음성 파일의 URL과 스타일 정보
         """
         model_path = str(self.default_model_paths[0])
         self.model_holder.get_model(self.default_model, model_path)
@@ -64,7 +65,9 @@ class TTSService:
         
         emotion_scores = self.emotion_service.predict(text)
         top_emotion = get_top_emotion(emotion_scores)
-        style, style_weight = get_style_from_emotion(top_emotion)
+        
+        if style is None or style_weight is None:
+            style, style_weight = get_style_from_emotion(top_emotion)
         
         try:
             sr, audio = model.infer(
@@ -94,4 +97,9 @@ class TTSService:
         filepath = os.path.join("outputs", filename)
         sf.write(filepath, audio, sr)
 
-        return f"/outputs/{filename}"
+        return {
+            "audio_url": f"/outputs/{filename}",
+            "emotion": top_emotion,
+            "style": style,
+            "style_weight": style_weight
+        }
