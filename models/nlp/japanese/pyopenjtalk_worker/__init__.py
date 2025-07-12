@@ -1,5 +1,5 @@
 # ====================================================================
-#  File: models/nlp/japanese/user_dict/__init__.py
+#  File: models/nlp/japanese/pyopenjtalk_worker/__init__.py
 # ====================================================================
 """
 Run the pyopenjtalk worker in a separate process

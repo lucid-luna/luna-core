@@ -1,5 +1,5 @@
 # ====================================================================
-#  File: models/nlp/japanese/user_dict/__init__.py
+#  File: models/nlp/japanese/pyopenjtalk_worker/__main__.py
 # ====================================================================
 import argparse
 

@@ -1,3 +1,7 @@
+# ====================================================================
+#  File: models/tts_model.py
+# ====================================================================
+
 import logging
 from pathlib import Path
 from typing import Any, Optional, Union
@@ -30,17 +34,10 @@ from models.voice import adjust_voice
 
 logger = logging.getLogger(__name__)
 
-# Gradio の import は重いため、ここでは型チェック時のみ import する
-# ライブラリとしての利用を考慮し、TTSModelHolder の _for_gradio() 系メソッド以外では Gradio に依存しないようにする
-# _for_gradio() 系メソッドの戻り値の型アノテーションを文字列としているのは、Gradio なしで実行できるようにするため
-# if TYPE_CHECKING:
-#     import gradio as gr
-
-
 class TTSModel:
     """
-    Style-Bert-Vits2 の音声合成モデルを操作するクラス。
-    モデル/ハイパーパラメータ/スタイルベクトルのパスとデバイスを指定して初期化し、model.infer() メソッドを呼び出すと音声合成を行える。
+    LunaTTS 모델의 음성 합성 기능을 제공하는 클래스입니다.
+    모델/하이퍼파라미터/스타일 벡터의 경로와 장치를 지정하여 초기화하며, model.infer() 메서드를 호출하여 음성 합성을 수행할 수 있습니다.
     """
 
     def __init__(
@@ -51,35 +48,31 @@ class TTSModel:
         device: str,
     ) -> None:
         """
-        Style-Bert-Vits2 の音声合成モデルを初期化する。
-        この時点ではモデルはロードされていない (明示的にロードしたい場合は model.load() を呼び出す)。
+        LunaTTS 모델을 초기화합니다.
+        이 시점에서는 모델이 로드되지 않습니다 (명시적으로 로드하려면 model.load()를 호출해야 함).
 
         Args:
-            model_path (Path): モデル (.safetensors) のパス
-            config_path (Union[Path, HyperParameters]): ハイパーパラメータ (config.json) のパス (直接 HyperParameters を指定することも可能)
-            style_vec_path (Union[Path, NDArray[Any]]): スタイルベクトル (style_vectors.npy) のパス (直接 NDArray を指定することも可能)
-            device (str): 音声合成時に利用するデバイス (cpu, cuda, mps など)
+            model_path (Path): 모델 (.safetensors) 의 경로
+            config_path (Union[Path, HyperParameters]): 하이퍼파라미터 (config.json) 의 경로 (직접 HyperParameters 를 지정하는 것도 가능)
+            style_vec_path (Union[Path, NDArray[Any]]): 스타일 벡터 (style_vectors.npy) 의 경로 (직접 NDArray 를 지정하는 것도 가능)
+            device (str): 음성 합성 시에 사용할 장치 (cpu, cuda, mps 등)
         """
 
         self.model_path: Path = model_path
         self.device: str = device
 
-        # ハイパーパラメータの Pydantic モデルが直接指定された
         if isinstance(config_path, HyperParameters):
-            self.config_path: Path = Path("")  # 互換性のため空の Path を設定
+            self.config_path: Path = Path("")
             self.hyper_parameters: HyperParameters = config_path
-        # ハイパーパラメータのパスが指定された
         else:
             self.config_path: Path = config_path
             self.hyper_parameters: HyperParameters = HyperParameters.load_from_json(
                 self.config_path
             )
 
-        # スタイルベクトルの NDArray が直接指定された
         if isinstance(style_vec_path, np.ndarray):
-            self.style_vec_path: Path = Path("")  # 互換性のため空の Path を設定
+            self.style_vec_path: Path = Path("")
             self.__style_vectors: NDArray[Any] = style_vec_path
-        # スタイルベクトルのパスが指定された
         else:
             self.style_vec_path: Path = style_vec_path
             self.__style_vectors: NDArray[Any] = np.load(self.style_vec_path)
@@ -106,9 +99,6 @@ class TTSModel:
         self.__net_g: Union[SynthesizerTrn, SynthesizerTrnJPExtra, None] = None
 
     def load(self) -> None:
-        """
-        音声合成モデルをデバイスにロードする。
-        """
         self.__net_g = get_net_g(
             model_path=str(self.model_path),
             version=self.hyper_parameters.version,
@@ -117,16 +107,6 @@ class TTSModel:
         )
 
     def __get_style_vector(self, style_id: int, weight: float = 1.0) -> NDArray[Any]:
-        """
-        スタイルベクトルを取得する。
-
-        Args:
-            style_id (int): スタイル ID (0 から始まるインデックス)
-            weight (float, optional): スタイルベクトルの重み. Defaults to 1.0.
-
-        Returns:
-            NDArray[Any]: スタイルベクトル
-        """
         mean = self.__style_vectors[0]
         style_vec = self.__style_vectors[style_id]
         style_vec = mean + (style_vec - mean) * weight
@@ -135,20 +115,7 @@ class TTSModel:
     def __get_style_vector_from_audio(
         self, audio_path: str, weight: float = 1.0
     ) -> NDArray[Any]:
-        """
-        音声からスタイルベクトルを推論する。
-
-        Args:
-            audio_path (str): 音声ファイルのパス
-            weight (float, optional): スタイルベクトルの重み. Defaults to 1.0.
-        Returns:
-            NDArray[Any]: スタイルベクトル
-        """
-
         if self.__style_vector_inference is None:
-
-            # pyannote.audio は scikit-learn などの大量の重量級ライブラリに依存しているため、
-            # TTSModel.infer() に reference_audio_path を指定し音声からスタイルベクトルを推論する場合のみ遅延 import する
             try:
                 import pyannote.audio
             except ImportError:
@@ -156,7 +123,6 @@ class TTSModel:
                     "pyannote.audio is required to infer style vector from audio"
                 )
 
-            # スタイルベクトルを取得するための推論モデルを初期化
             self.__style_vector_inference = pyannote.audio.Inference(
                 model=pyannote.audio.Model.from_pretrained(
                     "pyannote/wespeaker-voxceleb-resnet34-LM"
@@ -165,7 +131,6 @@ class TTSModel:
             )
             self.__style_vector_inference.to(torch.device(self.device))
 
-        # 音声からスタイルベクトルを推論
         xvec = self.__style_vector_inference(audio_path)
         mean = self.__style_vectors[0]
         xvec = mean + (xvec - mean) * weight
@@ -173,16 +138,14 @@ class TTSModel:
 
     def __convert_to_16_bit_wav(self, data: NDArray[Any]) -> NDArray[Any]:
         """
-        音声データを 16-bit int 形式に変換する。
-        gradio.processing_utils.convert_to_16_bit_wav() を移植したもの。
+        음성 데이터를 16-bit 정수로 변환합니다.
 
         Args:
-            data (NDArray[Any]): 音声データ
+            data (NDArray[Any]): 음성 데이터
 
         Returns:
-            NDArray[Any]: 16-bit int 形式の音声データ
+            NDArray[Any]: 16-bit 정수 음성 데이터
         """
-        # Based on: https://docs.scipy.org/doc/scipy/reference/generated/scipy.io.wavfile.write.html
         if data.dtype in [np.float64, np.float32, np.float16]:  # type: ignore
             data = data / np.abs(data).max()
             data = data * 32767
@@ -231,31 +194,31 @@ class TTSModel:
         intonation_scale: float = 1.0,
     ) -> tuple[int, NDArray[Any]]:
         """
-        テキストから音声を合成する。
+        텍스트에서 음성을 생성합니다.
 
         Args:
-            text (str): 読み上げるテキスト
-            language (Languages, optional): 言語. Defaults to Languages.JP.
-            speaker_id (int, optional): 話者 ID. Defaults to 0.
-            reference_audio_path (Optional[str], optional): 音声スタイルの参照元の音声ファイルのパス. Defaults to None.
-            sdp_ratio (float, optional): DP と SDP の混合比。0 で DP のみ、1で SDP のみを使用 (値を大きくするとテンポに緩急がつく). Defaults to DEFAULT_SDP_RATIO.
-            noise (float, optional): DP に与えられるノイズ. Defaults to DEFAULT_NOISE.
-            noise_w (float, optional): SDP に与えられるノイズ. Defaults to DEFAULT_NOISEW.
-            length (float, optional): 生成音声の長さ（話速）のパラメータ。大きいほど生成音声が長くゆっくり、小さいほど短く早くなる。 Defaults to DEFAULT_LENGTH.
-            line_split (bool, optional): テキストを改行ごとに分割して生成するかどうか (True の場合 given_phone/given_tone は無視される). Defaults to DEFAULT_LINE_SPLIT.
-            split_interval (float, optional): 改行ごとに分割する場合の無音 (秒). Defaults to DEFAULT_SPLIT_INTERVAL.
-            assist_text (Optional[str], optional): 感情表現の参照元の補助テキスト. Defaults to None.
-            assist_text_weight (float, optional): 感情表現の補助テキストを適用する強さ. Defaults to DEFAULT_ASSIST_TEXT_WEIGHT.
-            use_assist_text (bool, optional): 音声合成時に感情表現の補助テキストを使用するかどうか. Defaults to False.
-            style (str, optional): 音声スタイル (Neutral, Happy など). Defaults to DEFAULT_STYLE.
-            style_weight (float, optional): 音声スタイルを適用する強さ. Defaults to DEFAULT_STYLE_WEIGHT.
-            given_phone (Optional[list[int]], optional): 読み上げテキストの読みを表す音素列。指定する場合は given_tone も別途指定が必要. Defaults to None.
-            given_tone (Optional[list[int]], optional): アクセントのトーンのリスト. Defaults to None.
-            pitch_scale (float, optional): ピッチの高さ (1.0 から変更すると若干音質が低下する). Defaults to 1.0.
-            intonation_scale (float, optional): 抑揚の平均からの変化幅 (1.0 から変更すると若干音質が低下する). Defaults to 1.0.
+            text (str): 읽어야 할 텍스트
+            language (Languages, optional): 언어 (기본값: Languages.JP)
+            speaker_id (int, optional): 화자 ID. (기본값: 0)
+            reference_audio_path (Optional[str], optional): 음성 스타일의 참조 음성 파일 경로 (기본값: None)
+            sdp_ratio (float, optional): DP와 SDP의 혼합 비율. 0에서 DP만, 1에서 SDP만 사용 (값이 커질수록 템포에 완급이 생김) (기본값: DEFAULT_SDP_RATIO)
+            noise (float, optional): DP에 주어지는 노이즈 (기본값: DEFAULT_NOISE)
+            noise_w (float, optional): SDP에 주어지는 노이즈 (기본값: DEFAULT_NOISEW)
+            length (float, optional): 생성 음성의 길이(말 속도) 매개변수 클수록 생성 음성이 길고 느려지며, 작을수록 짧고 빨라짐. (기본값: DEFAULT_LENGTH)
+            line_split (bool, optional): 텍스트를 개행마다 분할하여 생성할지 여부 (True인 경우 given_phone/given_tone은 무시됨) (기본값: DEFAULT_LINE_SPLIT)
+            split_interval (float, optional): 개행마다 분할할 경우의 무음 (초) (기본값: DEFAULT_SPLIT_INTERVAL)
+            assist_text (Optional[str], optional): 감정 표현의 참조 원본 보조 텍스트 (기본값: None)
+            assist_text_weight (float, optional): 감정 표현의 보조 텍스트를 적용하는 강도 (기본값: DEFAULT_ASSIST_TEXT_WEIGHT)
+            use_assist_text (bool, optional): 음성 합성 시 감정 표현의 보조 텍스트를 사용할지 여부 (기본값: False)
+            style (str, optional): 음성 스타일 (Neutral, Happy 등) (기본값: DEFAULT_STYLE)
+            style_weight (float, optional): 음성 스타일을 적용하는 강도 (기본값: DEFAULT_STYLE_WEIGHT)
+            given_phone (Optional[list[int]], optional): 읽어야 할 텍스트의 음소를 나타내는 리스트 지정하는 경우 given_tone도 별도로 지정해야 함. (기본값: None)
+            given_tone (Optional[list[int]], optional): 억양의 톤 리스트 (기본값: None)
+            pitch_scale (float, optional): 피치의 높이 (1.0에서 변경하면 약간 음질이 저하됨) (기본값: 1.0)
+            intonation_scale (float, optional): 억양의 평균에서 변화하는 폭 (1.0에서 변경하면 약간 음질이 저하됨) (기본값: 1.0)
 
         Returns:
-            tuple[int, NDArray[Any]]: サンプリングレートと音声データ (16bit PCM)
+            tuple[int, NDArray[Any]]: 샘플링 레이트와 음성 데이터 (16bit PCM)
         """
 
         logger.info(f"Start generating audio data from text:\n{text}")
@@ -334,42 +297,18 @@ class TTSModel:
         audio = self.__convert_to_16_bit_wav(audio)
         return (self.hyper_parameters.data.sampling_rate, audio)
 
-
 class TTSModelInfo(BaseModel):
     name: str
     files: list[str]
     styles: list[str]
     speakers: list[str]
 
-
 class TTSModelHolder:
     """
-    Style-Bert-Vits2 の音声合成モデルを管理するクラス。
-    model_holder.models_info から指定されたディレクトリ内にある音声合成モデルの一覧を取得できる。
+    LunaTTS 모델을 관리하는 클래스입니다.
     """
 
     def __init__(self, model_root_dir: Path, device: str) -> None:
-        """
-        Style-Bert-Vits2 の音声合成モデルを管理するクラスを初期化する。
-        音声合成モデルは下記のように配置されていることを前提とする (.safetensors のファイル名は自由) 。
-        ```
-        model_root_dir
-        ├── model-name-1
-        │   ├── config.json
-        │   ├── model-name-1_e160_s14000.safetensors
-        │   └── style_vectors.npy
-        ├── model-name-2
-        │   ├── config.json
-        │   ├── model-name-2_e160_s14000.safetensors
-        │   └── style_vectors.npy
-        └── ...
-        ```
-
-        Args:
-            model_root_dir (Path): 音声合成モデルが配置されているディレクトリのパス
-            device (str): 音声合成時に利用するデバイス (cpu, cuda, mps など)
-        """
-
         from pathlib import Path as _Path
         self.root_dir: _Path = _Path(model_root_dir)
         
@@ -381,10 +320,6 @@ class TTSModelHolder:
         self.refresh()
 
     def refresh(self) -> None:
-        """
-        音声合成モデルの一覧を更新する。
-        """
-
         self.model_files_dict = {}
         self.model_names = []
         self.current_model = None
@@ -423,18 +358,6 @@ class TTSModelHolder:
             )
 
     def get_model(self, model_name: str, model_path_str: str) -> TTSModel:
-        """
-        指定された音声合成モデルのインスタンスを取得する。
-        この時点ではモデルはロードされていない (明示的にロードしたい場合は model.load() を呼び出す)。
-
-        Args:
-            model_name (str): 音声合成モデルの名前
-            model_path_str (str): 音声合成モデルのファイルパス (.safetensors)
-
-        Returns:
-            TTSModel: 音声合成モデルのインスタンス
-        """
-
         model_path = Path(model_path_str)
         if model_name not in self.model_files_dict:
             raise ValueError(f"Model `{model_name}` is not found")
@@ -450,58 +373,58 @@ class TTSModelHolder:
 
         return self.current_model
 
-    def get_model_for_gradio(self, model_name: str, model_path_str: str):
-        import gradio as gr
+    # def get_model_for_gradio(self, model_name: str, model_path_str: str):
+    #     import gradio as gr
 
-        model_path = Path(model_path_str)
-        if model_name not in self.model_files_dict:
-            raise ValueError(f"Model `{model_name}` is not found")
-        if model_path not in self.model_files_dict[model_name]:
-            raise ValueError(f"Model file `{model_path}` is not found")
-        if (
-            self.current_model is not None
-            and self.current_model.model_path == model_path
-        ):
-            # Already loaded
-            speakers = list(self.current_model.spk2id.keys())
-            styles = list(self.current_model.style2id.keys())
-            return (
-                gr.Dropdown(choices=styles, value=styles[0]),  # type: ignore
-                gr.Button(interactive=True, value="音声合成"),
-                gr.Dropdown(choices=speakers, value=speakers[0]),  # type: ignore
-            )
-        self.current_model = TTSModel(
-            model_path=model_path,
-            config_path=self.root_dir / model_name / "config.json",
-            style_vec_path=self.root_dir / model_name / "style_vectors.npy",
-            device=self.device,
-        )
-        speakers = list(self.current_model.spk2id.keys())
-        styles = list(self.current_model.style2id.keys())
-        return (
-            gr.Dropdown(choices=styles, value=styles[0]),  # type: ignore
-            gr.Button(interactive=True, value="音声合成"),
-            gr.Dropdown(choices=speakers, value=speakers[0]),  # type: ignore
-        )
+    #     model_path = Path(model_path_str)
+    #     if model_name not in self.model_files_dict:
+    #         raise ValueError(f"Model `{model_name}` is not found")
+    #     if model_path not in self.model_files_dict[model_name]:
+    #         raise ValueError(f"Model file `{model_path}` is not found")
+    #     if (
+    #         self.current_model is not None
+    #         and self.current_model.model_path == model_path
+    #     ):
+    #         # Already loaded
+    #         speakers = list(self.current_model.spk2id.keys())
+    #         styles = list(self.current_model.style2id.keys())
+    #         return (
+    #             gr.Dropdown(choices=styles, value=styles[0]),  # type: ignore
+    #             gr.Button(interactive=True, value="音声合成"),
+    #             gr.Dropdown(choices=speakers, value=speakers[0]),  # type: ignore
+    #         )
+    #     self.current_model = TTSModel(
+    #         model_path=model_path,
+    #         config_path=self.root_dir / model_name / "config.json",
+    #         style_vec_path=self.root_dir / model_name / "style_vectors.npy",
+    #         device=self.device,
+    #     )
+    #     speakers = list(self.current_model.spk2id.keys())
+    #     styles = list(self.current_model.style2id.keys())
+    #     return (
+    #         gr.Dropdown(choices=styles, value=styles[0]),  # type: ignore
+    #         gr.Button(interactive=True, value="音声合成"),
+    #         gr.Dropdown(choices=speakers, value=speakers[0]),  # type: ignore
+    #     )
 
-    def update_model_files_for_gradio(self, model_name: str):
-        import gradio as gr
+    # def update_model_files_for_gradio(self, model_name: str):
+    #     import gradio as gr
 
-        model_files = [str(f) for f in self.model_files_dict[model_name]]
-        return gr.Dropdown(choices=model_files, value=model_files[0])  # type: ignore
+    #     model_files = [str(f) for f in self.model_files_dict[model_name]]
+    #     return gr.Dropdown(choices=model_files, value=model_files[0])  # type: ignore
 
-    def update_model_names_for_gradio(
-        self,
-    ):
-        import gradio as gr
+    # def update_model_names_for_gradio(
+    #     self,
+    # ):
+    #     import gradio as gr
 
-        self.refresh()
-        initial_model_name = self.model_names[0]
-        initial_model_files = [
-            str(f) for f in self.model_files_dict[initial_model_name]
-        ]
-        return (
-            gr.Dropdown(choices=self.model_names, value=initial_model_name),  # type: ignore
-            gr.Dropdown(choices=initial_model_files, value=initial_model_files[0]),  # type: ignore
-            gr.Button(interactive=False),  # For tts_button
-        )
+    #     self.refresh()
+    #     initial_model_name = self.model_names[0]
+    #     initial_model_files = [
+    #         str(f) for f in self.model_files_dict[initial_model_name]
+    #     ]
+    #     return (
+    #         gr.Dropdown(choices=self.model_names, value=initial_model_name),  # type: ignore
+    #         gr.Dropdown(choices=initial_model_files, value=initial_model_files[0]),  # type: ignore
+    #         gr.Button(interactive=False),  # For tts_button
+    #     )

@@ -1,72 +1,97 @@
 # config/models.yaml.sample
 
+name: "YourProjectName"
+version: "0.0.1"
+description: "Your model configuration description"
+author: "YourName"
+
 emotion:
   # 로컬 모델 디렉터리
-  model_dir: "./checkpoints/LunaEmotion"
+  model_dir: "./checkpoints/EmotionModel"
 
-  # 토크나이저 디렉터리 (보통 model_dir와 같음)
-  tokenizer_dir: "./checkpoints/LunaEmotion"
+  # 토크나이저 디렉터리
+  tokenizer_dir: "./checkpoints/EmotionModel"
 
-  # HuggingFace 허브 모델 이름 (use_local=false 일 때)
-  hub_model_name: "google/electra-small-discriminator"
+  # 허깅페이스 허브 모델 이름
+  hub_model_name: "your-hf/emotion-model"
+
+  # 감정 분석 모델 설정
+  model:
+    name: "your-hf/emotion-model"
+    num_labels: 0
+    dropout_prob: 0.1
 
   # 예측 확률 필터 임계값
   threshold: 0.5
 
-  # 감정 레이블 리스트 (28개)
+  # 감정 레이블 리스트 (예시)
   label_list:
-    - admiration
-    - amusement
-    - anger
-    - annoyance
-    - approval
-    - caring
-    - confusion
-    - curiosity
-    - desire
-    - disappointment
-    - disapproval
-    - disgust
-    - embarrassment
-    - excitement
-    - fear
-    - gratitude
-    - grief
-    - joy
-    - love
-    - nervousness
-    - optimism
-    - pride
-    - realization
-    - relief
-    - sadness
-    - surprise
-    - neutral
-    - something_else
+    - label_1
+    - label_2
+    - label_3
 
 multi_intent:
   # 로컬 모델 디렉터리
-  model_dir: "./checkpoints/LunaMultiIntent"
+  model_dir: "./checkpoints/IntentModel"
 
-  # 토크나이저 디렉터리 (보통 model_dir와 같음)
-  tokenizer_dir: "./checkpoints/LunaMultiIntent"
+  # 토크나이저 디렉터리
+  tokenizer_dir: "./checkpoints/IntentModel"
 
-  # HuggingFace 허브 모델 이름 (use_local=false 일 때)
-  hub_model_name: "google/bert_uncased_L-2_H-128_A-2"
+  # 허깅페이스 허브 모델 이름
+  hub_model_name: "your-hf/intent-model"
+
+  # 인텐트 분류 모델 설정
+  model:
+    name: "your-hf/intent-model"
+    num_labels: 0
 
   # 예측 확률 필터 임계값
   threshold: 0.5
 
-  # 인텐트 레이블 리스트 (예시 일부만)
+  # 인텐트 레이블 리스트 (예시)
   label_list:
-    - accept_reservations
-    - account_blocked
-    - alarm
-    - application_status
-    - apr
-    - are_you_a_bot
-    - balance
-    - bill_balance
-    - bill_due
-    - book_flight
-    # ... (전체 147개 중 일부, 실제 config에서는 전체 포함 필요)
+    - intent_1
+    - intent_2
+    - intent_3
+
+vision:
+  # 비전 모델 디렉터리
+  model_dir: "./checkpoints/VisionModel"
+
+  # 사용할 디바이스 ("CPU", "GPU", "NPU" 등)
+  device: "CPU"
+
+  # 추론 시 생성할 최대 토큰 수
+  max_new_tokens: 32
+
+  # 입력 문자열 최대 길이 제한
+  char_limit: 256
+
+  # 프롬프트 템플릿
+  prompt_tpl: |
+    <|user|>
+    <|image_1|>
+    SYSTEM: Describe the image.
+    USER: What is in the image?
+    <|assistant|>
+
+  # 동시에 실행 가능한 추론 수
+  max_concurrent: 1
+
+tts:
+  # TTS 모델 디렉터리
+  model_dir: "./checkpoints/TTSModel"
+
+  # 기본 모델 이름
+  default_model: "TTSModel"
+
+  # 샘플링 레이트 (예: 22050, 44100)
+  sampling_rate: 22050
+
+  # TTS 하이퍼파라미터
+  noise_scale: 0.6
+  noise_scale_w: 0.2
+  length_scale: 1.0
+  sdp_ratio: 0.2
+  split_interval: 0.5
+  line_split: false

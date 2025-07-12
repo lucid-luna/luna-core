@@ -1,9 +1,12 @@
-import enum
+# =====================================================================
+# File: models/utils/strenum.py
+# =====================================================================
 
+import enum
 
 class StrEnum(str, enum.Enum):
     """
-    Enum where members are also (and must be) strings (backported from Python 3.11).
+    열거형 클래스의 문자열 버전입니다.
     """
 
     def __new__(cls, *values: str) -> "StrEnum":
@@ -31,7 +34,4 @@ class StrEnum(str, enum.Enum):
     def _generate_next_value_(
         name: str, start: int, count: int, last_values: list[str]
     ) -> str:
-        """
-        Return the lower-cased version of the member name.
-        """
         return name.lower()
