@@ -141,7 +141,8 @@ def synthesize_text(request: TextRequest):
     return JSONResponse(
         content=result
     )
-    
+
+# Text Translation Endpoint
 @app.post("/translate", response_model=TranslateResponse, tags=["Translation"])
 def translate_text(request: TranslateRequest):
     """
