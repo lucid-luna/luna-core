@@ -23,6 +23,7 @@ from services.emotion import EmotionService
 from services.multi_intent import MultiIntentService
 from services.vision import VisionService
 from services.tts import TTSService
+from utils.style_map import get_style_from_emotion, get_top_emotion
 
 # FastAPI 앱 초기화
 app = FastAPI(
@@ -113,7 +114,15 @@ def synthesize_text(request: TextRequest):
         SynthesizeResponse: 합성된 음성 파일 URL
     """
     try:
-        audio_url = tts_service.synthesize(request.text)
+        emotions = emotion_service.predict(request.text)
+        top_emotion = get_top_emotion(emotions)
+        style_name, style_strength = get_style_from_emotion(top_emotion)
+        
+        audio_url = tts_service.synthesize(
+            text=request.text,
+            style=style_name,
+            style_weight=style_strength
+        )
     except HTTPException:
         raise
     except Exception as e:

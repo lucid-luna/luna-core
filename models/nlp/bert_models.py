@@ -23,7 +23,7 @@ from transformers import (
     PreTrainedTokenizerFast,
 )
 
-from constants import DEFAULT_BERT_TOKENIZER_PATHS, Languages
+from models.nlp.constants import DEFAULT_BERT_TOKENIZER_PATHS, Languages
 
 logger = logging.getLogger(__name__)
 

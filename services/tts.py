@@ -17,6 +17,8 @@ from pathlib import Path
 from fastapi import HTTPException
 
 from utils.config import load_config_dict
+from utils.style_map import get_style_from_emotion, get_top_emotion
+from services.emotion import EmotionService
 from models.tts_model import TTSModelHolder
 
 class TTSService:
@@ -40,8 +42,10 @@ class TTSService:
         self.sdp_ratio = tts_config.get("sdp_ratio", 0.2)
         self.split_interval = tts_config.get("split_interval", 0.5)
         self.line_split = tts_config.get("line_split", False)
+        
+        self.emotion_service = EmotionService()
     
-    def synthesize(self, text: str) -> str:
+    def synthesize(self, text: str, style: str = "Neutral", style_weight: float = 1.0) -> str:
         """
         주어진 텍스트를 TTS 모델을 사용하여 음성으로 합성하고,
         합성된 오디오 파일의 URL을 반환합니다.
@@ -58,6 +62,10 @@ class TTSService:
         if model is None:
             raise HTTPException(status_code=500, detail="TTS model not loaded")
         
+        emotion_scores = self.emotion_service.predict(text)
+        top_emotion = get_top_emotion(emotion_scores)
+        style, style_weight = get_style_from_emotion(top_emotion)
+        
         try:
             sr, audio = model.infer(
                 text=text,
@@ -72,8 +80,8 @@ class TTSService:
                 assist_text=None,
                 assist_text_weight=0.0,
                 use_assist_text=False,
-                style="Neutral",
-                style_weight=1.0,
+                style=style,
+                style_weight=style_weight,
                 given_tone=None,
                 speaker_id=list(model.spk2id.values())[0],
                 pitch_scale=1.0,
