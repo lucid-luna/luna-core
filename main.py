@@ -26,13 +26,13 @@ from services.multi_intent import MultiIntentService
 from services.vision import VisionService
 from services.tts import TTSService
 from services.translator import TranslatorService
-from utils.style_map import get_style_from_emotion, get_top_emotion
+from services.llm import LLMService
 
 # FastAPI 앱 초기화
 app = FastAPI(
     title="L.U.N.A. Core API",
     description="L.U.N.A. Core API",
-    version="1.0.0",
+    version="1.1.0",
 )
 
 # 서비스 인스턴스 생성
@@ -41,6 +41,7 @@ multi_intent_service = MultiIntentService()
 vision_service = VisionService()
 tts_service = TTSService(device="cuda" if torch.cuda.is_available() else "cpu")
 translator_service = TranslatorService()
+llm_service = LLMService(server_url="http://localhost:8080")
 
 from fastapi.staticfiles import StaticFiles
 app.mount("/outputs", StaticFiles(directory="outputs"), name="outputs")
@@ -68,6 +69,25 @@ class TranslateRequest(BaseModel):
     
 class TranslateResponse(BaseModel):
     translated_text: str
+
+class LLMRequest(BaseModel):
+    input: str
+    temperature: float = 0.7
+    max_tokens: int = 256
+
+class LLMResponse(BaseModel):
+    content: str
+    
+# Interact 
+class InteractRequest(BaseModel):
+    input: str
+    
+class InteractResponse(BaseModel):
+    text: str
+    emotion: str
+    intent: str
+    style: str
+    audio_url: str
     
 # Health Check Endpoint
 @app.get("/health", tags=["Utility"])
@@ -162,3 +182,84 @@ def translate_text(request: TranslateRequest):
         return TranslateResponse(translated_text=translated)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"[L.U.N.A. Translate] 번역 중 오류 발생: {str(e)}")
+    
+# LLM Generation Endpoint
+@app.post("/generate", response_model=LLMResponse, tags=["LLM"])
+def generate_text(request: LLMRequest):
+    """
+    LLM 서버에 요청을 보내고 응답을 반환합니다.
+
+    Args:
+        request (LLMRequest): LLM 요청 정보
+    Returns:
+        LLMResponse: LLM의 응답 텍스트
+    """
+    try:
+        content = llm_service.generate(
+            input_text=request.input,
+            temperature=request.temperature,
+            max_tokens=request.max_tokens
+        )
+        return LLMResponse(content=content)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"[L.U.N.A. LLM] 생성 중 오류 발생: {str(e)}")
+    
+# Interact Endpoint
+@app.post("/interact", response_model=InteractResponse, tags=["Interaction"])
+def interact(request: InteractRequest):
+    """
+    전체 모델의 상호작용을 처리하는 엔드포인트
+    """
+    try:
+        print("[L.U.N.A. Interact] 입력 텍스트:", request.input)
+        
+        ko_input = translator_service.translate(
+            text=request.input,
+            from_lang="ko",
+            to_lang="en"
+        )
+        
+        print("[L.U.N.A. Interact] LLM Input (EN):", ko_input)
+        
+        emotion_probs = emotion_service.predict(ko_input)
+        intent_probs = multi_intent_service.predict(ko_input)
+        top_emotion = max(emotion_probs, key=emotion_probs.get) if emotion_probs else "neutral"
+        top_intent = max(intent_probs, key=intent_probs.get) if intent_probs else "greeting"
+
+        print("[L.U.N.A. Interact] Emotion:", top_emotion, "Intent:", top_intent)
+        
+        from utils.style_map import get_style_from_emotion
+        style, style_weight = get_style_from_emotion(top_emotion)
+        print("[L.U.N.A. Interact] Style:", style, "Weight:", style_weight)
+        
+        en_response = llm_service.generate(
+            input_text=ko_input,
+            temperature=0.85,
+            max_tokens=256
+        )
+        
+        print("[L.U.N.A. Interact] LLM Response (EN):", en_response)
+        
+        jp_response = translator_service.translate(
+            text=en_response,
+            from_lang="en",
+            to_lang="ja"
+        )
+        
+        print("[L.U.N.A. Interact] TTS Input (JP):", jp_response)
+        
+        result: dict[str, Any] = tts_service.synthesize(
+            text=jp_response,
+            style=style,
+            style_weight=style_weight
+        )
+        
+        return InteractResponse(
+            text=jp_response,
+            emotion=top_emotion,
+            intent=top_intent,
+            style=style,
+            audio_url=result["audio_url"]
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"[L.U.N.A. Interact] 상호작용 중 오류 발생: {str(e)}")

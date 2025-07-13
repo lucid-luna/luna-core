@@ -12,6 +12,7 @@ EMOTION_TO_STYLE = {
     "neutral": "Neutral",
     "something_else": "Neutral",
     "admiration": "Neutral",
+    "curiosity": "Neutral",  # 질문 관련 감정은 전부 중립 처리
     
     # 긍정 감정 = happy
     "joy": "Happy",
@@ -51,22 +52,21 @@ EMOTION_TO_STYLE = {
     
     # 떨리는 감정 => Sexual1/2 사용
     "desire": "Sexual1",
-    "curiosity": "Sexual2",
     "confusion": "Sexual2",
 }
 
 STYLE_STRENGTHS = {
     # 스타일 이름: 강도 (0.0 ~ 20.0)
-    "Neutral": 1.0,
-    "Happy": 1.0,
-    "Sad": 1.0,
-    "Angry": 1.0,
-    "Disgusted": 1.0,
-    "Embarrassed": 1.0,
-    "Fearful": 1.0,
-    "Surprised": 1.0,
-    "Sexual1": 1.0,
-    "Sexual2": 1.0,
+    "Neutral": 1.0, # 기본 스타일, 감정이 없거나 중립적인 상태
+    "Happy": 3.0, # Neutral과 비슷하지만, 행복감이 약간 더 높음
+    "Sad": 20.0, # 20이 제일 슬픔이 정확함
+    "Angry": 20.0, # 20이 제일 분노가 정확함
+    "Disgusted": 2.7, # 3 이상으로 넘어가지 않게 주의
+    "Embarrassed": 3.7, # 4 이상으로 넘어가지 않게 주의
+    "Fearful": 16.4, # 일정 이상 넘어갈 시 공포감이 강해짐
+    "Surprised": 20.0, # Neutral과 비슷하지만, 놀람의 강도가 약간 더 높음
+    "Sexual1": 1.5, # 강도는 낮지만, 감정 표현이 강함 ( 떨리는 목소리 )
+    "Sexual2": 2.0, # 감정 표현이 강함 ( 흐느낀 뒤 목소리 혹은 떨리는 목소리 )
 }
 
 def get_style_from_emotion(emotion: str) -> tuple[str, float]:
