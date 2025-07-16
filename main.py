@@ -28,6 +28,8 @@ from services.tts import TTSService
 from services.translator import TranslatorService
 from services.llm import LLMService
 
+from utils.osc_sender import OSCSender
+
 # FastAPI 앱 초기화
 app = FastAPI(
     title="L.U.N.A. Core API",
@@ -225,6 +227,9 @@ def interact(request: InteractRequest):
         intent_probs = multi_intent_service.predict(ko_input)
         top_emotion = max(emotion_probs, key=emotion_probs.get) if emotion_probs else "neutral"
         top_intent = max(intent_probs, key=intent_probs.get) if intent_probs else "greeting"
+
+        osc = OSCSender()
+        osc.send_emotion(top_emotion)
 
         print("[L.U.N.A. Interact] Emotion:", top_emotion, "Intent:", top_intent)
         
