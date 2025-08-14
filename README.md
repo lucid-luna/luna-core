@@ -99,7 +99,7 @@ luna-core/
 - [ ] TTS 음성 출력 캐릭터 프리셋 및 감정 연동 구조 확장
 - [ ] LLM WebSocket 스트리밍 처리 개선 및 캐릭터 메모리 연동
 - [ ] Vision API → luna-models 연동
-- [V] 캐릭터 상태 전송 시스템 구성
+- [ ] 캐릭터 상태 전송 시스템 구성
 - [ ] Plugin 실행 구조 표준화 (search, calculate, spotify 등)
 - [ ] /api/context 기반 세션 기억/복원 시스템 구축
 
