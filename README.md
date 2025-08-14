@@ -5,7 +5,6 @@
 <h1 align="center">⚙️ Luna Core</h1>
 <p align="center">
   <b>실시간 음성/시각 인터페이스와 멀티모달 AI 시스템을 위한 핵심 엔진</b><br/>
-  <i>Modular, Streamable, Real-Time ⏱️</i>
 </p>
 
 ---
@@ -33,6 +32,8 @@ luna-core/
 ---
 
 ## API Reference
+
+### 예시 API 리스트
 
 #### Speech-to-Text (STT)
 
@@ -98,7 +99,7 @@ luna-core/
 - [ ] TTS 음성 출력 캐릭터 프리셋 및 감정 연동 구조 확장
 - [ ] LLM WebSocket 스트리밍 처리 개선 및 캐릭터 메모리 연동
 - [ ] Vision API → luna-models 연동
-- [ ] 캐릭터 상태 전송 시스템 구성
+- [V] 캐릭터 상태 전송 시스템 구성
 - [ ] Plugin 실행 구조 표준화 (search, calculate, spotify 등)
 - [ ] /api/context 기반 세션 기억/복원 시스템 구축
 
