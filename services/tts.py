@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import os
 import uuid
+import numpy as np
 from pathlib import Path
 from typing import Optional, List
 
@@ -49,6 +50,7 @@ class TTSService:
     _model: Optional[torch.nn.Module] = None
     _sampling_rate: Optional[int] = None
     _config: Optional[dict] = None
+    _is_warmed_up: bool = False
 
     def __init__(self, device: str):
         tts_config = load_config_dict("models")["tts"]        
@@ -56,7 +58,7 @@ class TTSService:
         
         model_dir = Path(tts_config["model_dir"]).expanduser()
         self.default_name = tts_config.get("default_model")
-        self.outputs_dir  = Path(tts_config.get("output_dir", "outputs"))
+        self.outputs_dir = Path(tts_config.get("output_dir", "outputs"))
         self.outputs_dir.mkdir(exist_ok=True)
         
         if TTSService._holder is None or TTSService._config != tts_config:
@@ -65,17 +67,17 @@ class TTSService:
             self._load_default_model(tts_config)
 
         TTSService._sampling_rate = tts_config.get("sampling_rate", 44100)
-        self.noise_scale   = tts_config.get("noise_scale", 0.6)
+        self.noise_scale = tts_config.get("noise_scale", 0.6)
         self.noise_scale_w = tts_config.get("noise_scale_w", 0.8)
-        self.length_scale  = tts_config.get("length_scale", 1.0)
-        self.sdp_ratio     = tts_config.get("sdp_ratio", 0.2)
-        self.split_interval= tts_config.get("split_interval", 1.0)
-        self.line_split    = tts_config.get("line_split", False)
+        self.length_scale = tts_config.get("length_scale", 1.0)
+        self.sdp_ratio = tts_config.get("sdp_ratio", 0.2)
+        self.split_interval = tts_config.get("split_interval", 1.0)
+        self.line_split = tts_config.get("line_split", False)
 
         self.emotion_service = EmotionService()
-        
+
     def _load_default_model(self, tts_config: dict) -> None:
-        """TTSModelHolder -> Default_Model 캐싱 + compile"""
+        """TTSModelHolder -> Default_Model 캐싱 (torch.compile 제거)"""
         try:
             paths = TTSService._holder.model_files_dict[self.default_name]
         except KeyError:
@@ -93,14 +95,50 @@ class TTSService:
             )
             
         if isinstance(model, torch.nn.Module):
-            if torch.cuda.is_available() and torch.__version__ >= "2.0.0":
-                model = torch.compile(
-                    model,
-                    mode="max-autotune",
-                )
+            # if torch.cuda.is_available() and torch.__version__ >= "2.0.0":
+            #     model = torch.compile(model, mode="default")
             model.eval()
             
         TTSService._model = model
+        print(f"[TTS] 모델 '{self.default_name}' 로드 완료")
+    
+    def warmup(self) -> None:
+        """웜업 추론 실행"""
+        if TTSService._is_warmed_up:
+            print("[TTS] 이미 웜업 완료됨")
+            return
+            
+        print("[TTS] 웜업 추론 시작...")
+        try:
+            model = TTSService._model
+            if model is None:
+                raise TTSError("TTS_MODEL_NOT_LOADED", "TTS 모델이 로드되지 않았습니다.")
+            
+            with torch.autocast(self.device, torch.float16, enabled=self.device == "cuda"):
+                sr, audio = model.infer(
+                    text="こんにちは",
+                    language="JP",
+                    reference_audio_path=None,
+                    sdp_ratio=self.sdp_ratio,
+                    noise=self.noise_scale,
+                    noise_w=self.noise_scale_w,
+                    length=self.length_scale,
+                    line_split=False,
+                    split_interval=1.0,
+                    assist_text=None,
+                    assist_text_weight=0.0,
+                    use_assist_text=False,
+                    style="Neutral",
+                    style_weight=1.0,
+                    given_tone=None,
+                    speaker_id=list(model.spk2id.values())[0],
+                    pitch_scale=1.0,
+                    intonation_scale=1.0,
+                )
+            TTSService._is_warmed_up = True
+            print("[TTS] 웜업 추론 완료!")
+        except Exception as e:
+            print(f"[TTS] 웜업 실패: {e}")
     
     @torch.inference_mode()
     def synthesize(

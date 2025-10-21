@@ -68,7 +68,7 @@ def get_net_g(model_path: str, version: str, device: str, hps: HyperParameters):
     elif model_path.endswith(".safetensors"):
         _ = utils.safetensors.load_safetensors(model_path, net_g, True)
     else:
-        raise ValueError(f"Unknown model format: {model_path}")
+        raise ValueError(f"[L.U.N.A.] {model_path}는 .pth, .pt, .safetensors 파일이어야 합니다.")
     return net_g
 
 

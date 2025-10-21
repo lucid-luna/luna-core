@@ -20,7 +20,7 @@ from openvino import Tensor
 from openvino_genai import VLMPipeline, GenerationConfig
 
 def pil_to_tensor(img: Image.Image) -> Tensor:
-    # HWC→1xHWC, uint8
+    # HWC -> 1x HWC, uint8
     return Tensor(np.asarray(img, dtype=np.uint8)[None])
 
 class VisionService:
@@ -42,10 +42,10 @@ class VisionService:
         
     async def predict(self, image_bytes: bytes) -> str:
         """
-        1) bytes → PIL.Image
-        2) prompt 생성
-        3) VLMPipeline.generate 호출 (max_new_tokens, eos_id 세팅)
-        4) 후처리 (user 토큰 제거, 길이 제한)
+        bytes -> PIL.Image
+            -> prompt 생성
+            -> VLMPipeline.generate 호출 (max_new_tokens, eos_id 세팅)
+            -> 후처리 (user 토큰 제거, 길이 제한)
         """
         image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
         

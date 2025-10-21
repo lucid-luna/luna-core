@@ -23,15 +23,15 @@ def load_safetensors(
     for_infer: bool = False,
 ) -> tuple[torch.nn.Module, Optional[int]]:
     """
-    指定されたパスから safetensors モデルを読み込み、モデルとイテレーションを返す。
+    지정된 경로에서 safetensors 형식의 체크포인트를 로드하고 모델을 업데이트합니다.
 
     Args:
-        checkpoint_path (Union[str, Path]): モデルのチェックポイントファイルのパス
-        model (torch.nn.Module): 読み込む対象のモデル
-        for_infer (bool): 推論用に読み込むかどうかのフラグ
+        checkpoint_path (Union[str, Path]): 모델의 체크포인트 파일의 경로
+        model (torch.nn.Module): 로드할 대상 모델
+        for_infer (bool): 추론용으로 로드할지 여부
 
     Returns:
-        tuple[torch.nn.Module, Optional[int]]: 読み込まれたモデルとイテレーション回数（存在する場合）
+        tuple[torch.nn.Module, Optional[int]]: 로드된 모델과 이터레이션 횟수(존재하는 경우)
     """
 
     tensors: dict[str, Any] = {}
@@ -69,14 +69,14 @@ def save_safetensors(
     for_infer: bool = False,
 ) -> None:
     """
-    モデルを safetensors 形式で保存する。
+    모델을 safetensors 형식으로 저장합니다.
 
     Args:
-        model (torch.nn.Module): 保存するモデル
-        iteration (int): イテレーション回数
-        checkpoint_path (Union[str, Path]): 保存先のパス
-        is_half (bool): モデルを半精度で保存するかどうかのフラグ
-        for_infer (bool): 推論用に保存するかどうかのフラグ
+        model (torch.nn.Module): 저장할 모델
+        iteration (int): 이터레이션 횟수
+        checkpoint_path (Union[str, Path]): 저장할 경로
+        is_half (bool): 모델을 반정밀도로 저장할지 여부
+        for_infer (bool): 추론용으로 저장할지 여부
     """
 
     if hasattr(model, "module"):

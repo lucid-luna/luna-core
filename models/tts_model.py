@@ -49,7 +49,6 @@ class TTSModel:
     ) -> None:
         """
         LunaTTS 모델을 초기화합니다.
-        이 시점에서는 모델이 로드되지 않습니다 (명시적으로 로드하려면 model.load()를 호출해야 함).
 
         Args:
             model_path (Path): 모델 (.safetensors) 의 경로
@@ -87,12 +86,12 @@ class TTSModel:
             self.style2id: dict[str, int] = {str(i): i for i in range(num_styles)}
         if len(self.style2id) != num_styles:
             raise ValueError(
-                f"Number of styles ({num_styles}) does not match the number of style2id ({len(self.style2id)})"
+                f"스타일 수 ({num_styles})가 style2id의 수 ({len(self.style2id)})와 일치하지 않습니다."
             )
 
         if self.__style_vectors.shape[0] != num_styles:
             raise ValueError(
-                f"The number of styles ({num_styles}) does not match the number of style vectors ({self.__style_vectors.shape[0]})"
+                f"스타일 수 ({num_styles})가 스타일 벡터 수 ({self.__style_vectors.shape[0]})와 일치하지 않습니다."
             )
         self.__style_vector_inference: Optional[Any] = None
 
@@ -120,7 +119,7 @@ class TTSModel:
                 import pyannote.audio
             except ImportError:
                 raise ImportError(
-                    "pyannote.audio is required to infer style vector from audio"
+                    "pyannote.audio는 스타일 벡터를 오디오에서 추론하는 데 필요합니다."
                 )
 
             self.__style_vector_inference = pyannote.audio.Inference(
@@ -166,8 +165,8 @@ class TTSModel:
             data = data.astype(np.int16)
         else:
             raise ValueError(
-                "Audio data cannot be converted automatically from "
-                f"{data.dtype} to 16-bit int format."
+                "오디오 데이터를 "
+                f"{data.dtype}에서 16-bit int 형식으로 변환할 수 없습니다."
             )
         return data
 
@@ -221,10 +220,10 @@ class TTSModel:
             tuple[int, NDArray[Any]]: 샘플링 레이트와 음성 데이터 (16bit PCM)
         """
 
-        logger.info(f"Start generating audio data from text:\n{text}")
+        logger.info(f"텍스트에서 오디오 데이터 생성을 시작합니다:\n{text}")
         if language != "JP" and self.hyper_parameters.version.endswith("JP-Extra"):
             raise ValueError(
-                "The model is trained with JP-Extra, but the language is not JP"
+                "Style-BERT-VITS2 JP-Extra로 훈련된 모델은 일본어 텍스트에 대해서만 사용할 수 있습니다."
             )
         if reference_audio_path == "":
             reference_audio_path = None
@@ -286,7 +285,7 @@ class TTSModel:
                     if i != len(texts) - 1:
                         audios.append(np.zeros(int(44100 * split_interval)))
                 audio = np.concatenate(audios)
-        logger.info("Audio data generated successfully")
+        logger.info("오디오 데이터를 성공적으로 생성했습니다.")
         if not (pitch_scale == 1.0 and intonation_scale == 1.0):
             _, audio = adjust_voice(
                 fs=self.hyper_parameters.data.sampling_rate,
@@ -333,12 +332,12 @@ class TTSModelHolder:
                 if f.suffix in [".pth", ".pt", ".safetensors"]
             ]
             if len(model_files) == 0:
-                logger.warning(f"No model files found in {model_dir}, so skip it")
+                logger.warning(f"{model_dir}에서 모델 파일을 찾을 수 없습니다.")
                 continue
             config_path = model_dir / "config.json"
             if not config_path.exists():
                 logger.warning(
-                    f"Config file {config_path} not found, so skip {model_dir}"
+                    f"{config_path}가 존재하지 않으므로 {model_dir}를 건너뜁니다."
                 )
                 continue
             self.model_files_dict[model_dir.name] = model_files
@@ -360,9 +359,9 @@ class TTSModelHolder:
     def get_model(self, model_name: str, model_path_str: str) -> TTSModel:
         model_path = Path(model_path_str)
         if model_name not in self.model_files_dict:
-            raise ValueError(f"Model `{model_name}` is not found")
+            raise ValueError(f"모델 `{model_name}`이(가) 발견되지 않았습니다.")
         if model_path not in self.model_files_dict[model_name]:
-            raise ValueError(f"Model file `{model_path}` is not found")
+            raise ValueError(f"모델 파일 `{model_path}`이(가) 발견되지 않았습니다.")
         if self.current_model is None or self.current_model.model_path != model_path:
             self.current_model = TTSModel(
                 model_path=model_path,
@@ -372,59 +371,3 @@ class TTSModelHolder:
             )
 
         return self.current_model
-
-    # def get_model_for_gradio(self, model_name: str, model_path_str: str):
-    #     import gradio as gr
-
-    #     model_path = Path(model_path_str)
-    #     if model_name not in self.model_files_dict:
-    #         raise ValueError(f"Model `{model_name}` is not found")
-    #     if model_path not in self.model_files_dict[model_name]:
-    #         raise ValueError(f"Model file `{model_path}` is not found")
-    #     if (
-    #         self.current_model is not None
-    #         and self.current_model.model_path == model_path
-    #     ):
-    #         # Already loaded
-    #         speakers = list(self.current_model.spk2id.keys())
-    #         styles = list(self.current_model.style2id.keys())
-    #         return (
-    #             gr.Dropdown(choices=styles, value=styles[0]),  # type: ignore
-    #             gr.Button(interactive=True, value="音声合成"),
-    #             gr.Dropdown(choices=speakers, value=speakers[0]),  # type: ignore
-    #         )
-    #     self.current_model = TTSModel(
-    #         model_path=model_path,
-    #         config_path=self.root_dir / model_name / "config.json",
-    #         style_vec_path=self.root_dir / model_name / "style_vectors.npy",
-    #         device=self.device,
-    #     )
-    #     speakers = list(self.current_model.spk2id.keys())
-    #     styles = list(self.current_model.style2id.keys())
-    #     return (
-    #         gr.Dropdown(choices=styles, value=styles[0]),  # type: ignore
-    #         gr.Button(interactive=True, value="音声合成"),
-    #         gr.Dropdown(choices=speakers, value=speakers[0]),  # type: ignore
-    #     )
-
-    # def update_model_files_for_gradio(self, model_name: str):
-    #     import gradio as gr
-
-    #     model_files = [str(f) for f in self.model_files_dict[model_name]]
-    #     return gr.Dropdown(choices=model_files, value=model_files[0])  # type: ignore
-
-    # def update_model_names_for_gradio(
-    #     self,
-    # ):
-    #     import gradio as gr
-
-    #     self.refresh()
-    #     initial_model_name = self.model_names[0]
-    #     initial_model_files = [
-    #         str(f) for f in self.model_files_dict[initial_model_name]
-    #     ]
-    #     return (
-    #         gr.Dropdown(choices=self.model_names, value=initial_model_name),  # type: ignore
-    #         gr.Dropdown(choices=initial_model_files, value=initial_model_files[0]),  # type: ignore
-    #         gr.Button(interactive=False),  # For tts_button
-    #     )

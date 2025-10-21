@@ -26,17 +26,17 @@ def load_checkpoint(
     for_infer: bool = False,
 ) -> tuple[torch.nn.Module, Optional[torch.optim.Optimizer], float, int]:
     """
-    指定されたパスからチェックポイントを読み込み、モデルとオプティマイザーを更新する。
+    경로에서 체크포인트를 로드하고 모델과 옵티마이저를 업데이트합니다.
 
     Args:
-        checkpoint_path (Union[str, Path]): チェックポイントファイルのパス
-        model (torch.nn.Module): 更新するモデル
-        optimizer (Optional[torch.optim.Optimizer]): 更新するオプティマイザー。None の場合は更新しない
-        skip_optimizer (bool): オプティマイザーの更新をスキップするかどうかのフラグ
-        for_infer (bool): 推論用に読み込むかどうかのフラグ
+        checkpoint_path (Union[str, Path]): 체크포인트 파일의 경로
+        model (torch.nn.Module): 업데이트할 모델
+        optimizer (Optional[torch.optim.Optimizer]): 업데이트할 옵티마이저. None인 경우 업데이트하지 않음
+        skip_optimizer (bool): 옵티마이저의 업데이트를 스킵할지 여부
+        for_infer (bool): 추론용으로 로드할지 여부
 
     Returns:
-        tuple[torch.nn.Module, Optional[torch.optim.Optimizer], float, int]: 更新されたモデルとオプティマイザー、学習率、イテレーション回数
+        tuple[torch.nn.Module, Optional[torch.optim.Optimizer], float, int]: 업데이트된 모델과 옵티마이저, 학습률, 이터레이션 횟수
     """
 
     assert os.path.isfile(checkpoint_path)
@@ -107,14 +107,14 @@ def save_checkpoint(
     checkpoint_path: Union[str, Path],
 ) -> None:
     """
-    モデルとオプティマイザーの状態を指定されたパスに保存する。
+    모델과 옵티마이저의 상태를 지정된 경로에 저장합니다.
 
     Args:
-        model (torch.nn.Module): 保存するモデル
-        optimizer (Union[torch.optim.Optimizer, torch.optim.AdamW]): 保存するオプティマイザー
-        learning_rate (float): 学習率
-        iteration (int): イテレーション回数
-        checkpoint_path (Union[str, Path]): 保存先のパス
+        model (torch.nn.Module): 저장할 모델
+        optimizer (Union[torch.optim.Optimizer, torch.optim.AdamW]): 저장할 옵티마이저
+        learning_rate (float): 학습률
+        iteration (int): 이터레이션 횟수
+        checkpoint_path (Union[str, Path]): 저장할 경로
     """
     logger.info(
         f"Saving model and optimizer state at iteration {iteration} to {checkpoint_path}"
@@ -140,12 +140,12 @@ def clean_checkpoints(
     sort_by_time: bool = True,
 ) -> None:
     """
-    指定されたディレクトリから古いチェックポイントを削除して空き容量を確保する
+    체크포인트 디렉토리에서 오래된 체크포인트 파일을 삭제하여 디스크 공간을 확보합니다.
 
     Args:
-        model_dir_path (Union[str, Path]): モデルが保存されているディレクトリのパス
-        n_ckpts_to_keep (int): 保持するチェックポイントの数（G_0.pth と D_0.pth を除く）
-        sort_by_time (bool): True の場合、時間順に削除。False の場合、名前順に削除
+        model_dir_path (Union[str, Path]): 모델이 저장된 디렉토리의 경로
+        n_ckpts_to_keep (int): 유지할 체크포인트의 수 (G_0.pth 및 D_0.pth 제외)
+        sort_by_time (bool): True인 경우 시간순으로 삭제, False인 경우 이름순으로 삭제
     """
 
     ckpts_files = [
@@ -191,14 +191,14 @@ def get_latest_checkpoint_path(
     model_dir_path: Union[str, Path], regex: str = "G_*.pth"
 ) -> str:
     """
-    指定されたディレクトリから最新のチェックポイントのパスを取得する
+    지정된 디렉토리에서 최신의 체크포인트의 경로를 가져옵니다.
 
     Args:
-        model_dir_path (Union[str, Path]): モデルが保存されているディレクトリのパス
-        regex (str): チェックポイントのファイル名の正規表現
+        model_dir_path (Union[str, Path]): 모델이 저장된 디렉토리의 경로
+        regex (str): 체크포인트의 파일 이름에 대한 정규 표현식
 
     Returns:
-        str: 最新のチェックポイントのパス
+        str: 최신의 체크포인트의 경로
     """
 
     f_list = glob.glob(os.path.join(str(model_dir_path), regex))

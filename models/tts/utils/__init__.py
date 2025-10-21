@@ -112,7 +112,7 @@ def load_wav_to_torch(full_path: Union[str, Path]) -> tuple[torch.FloatTensor, i
     try:
         from scipy.io.wavfile import read
     except ImportError:
-        raise ImportError("scipy is required to load wav file")
+        raise ImportError("[L.U.N.A.] wav 파일을 불러오기 위해 scipy가 필요합니다. pip install scipy 로 설치해주세요.")
 
     sampling_rate, data = read(full_path)
     return torch.FloatTensor(data.astype(np.float32)), sampling_rate
@@ -148,7 +148,7 @@ def check_git_hash(model_dir_path: Union[str, Path]) -> None:
     source_dir = os.path.dirname(os.path.realpath(__file__))
     if not os.path.exists(os.path.join(source_dir, ".git")):
         logger.warning(
-            f"{source_dir} is not a git repository, therefore hash value comparison will be ignored."
+            f"[L.U.N.A.] {source_dir}는 Git 저장소가 아닙니다. Git Hash 체크를 건너뜁니다."
         )
         return
 
@@ -160,7 +160,7 @@ def check_git_hash(model_dir_path: Union[str, Path]) -> None:
             saved_hash = f.read()
         if saved_hash != cur_hash:
             logger.warning(
-                f"git hash values are different. {saved_hash[:8]}(saved) != {cur_hash[:8]}(current)"
+                f"[L.U.N.A.] Git Hash 값이 다릅니다. {saved_hash[:8]}(saved) != {cur_hash[:8]}(current)"
             )
     else:
         with open(path, "w", encoding="utf-8") as f:

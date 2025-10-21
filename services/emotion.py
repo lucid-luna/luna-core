@@ -116,8 +116,8 @@ class EmotionService:
                 model_name = config["model"]["name"],
                 num_labels = config["model"]["num_labels"],
                 dropout_prob = config["model"].get("dropout_prob", 0.1),
-                pos_weight   = torch.ones(len(self.label_list)),
-                # quant_cfg    = bnb_cfg, #TODO 4bit quantization
+                pos_weight = torch.ones(len(self.label_list)),
+                # quant_cfg = bnb_cfg, #TODO 4bit quantization
             )
             
             sd_path = self._model_dir / "model.safetensors"

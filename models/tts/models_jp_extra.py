@@ -760,7 +760,7 @@ class MultiPeriodDiscriminator(torch.nn.Module):
         return y_d_rs, y_d_gs, fmap_rs, fmap_gs
 
 class WavLMDiscriminator(nn.Module):
-    """docstring for Discriminator."""
+    """판별자: WavLM 특징을 입력으로 받음"""
 
     def __init__(
         self,

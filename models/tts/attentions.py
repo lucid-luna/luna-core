@@ -72,7 +72,7 @@ class Encoder(nn.Module):
                 )
                 assert (
                     self.cond_layer_idx < self.n_layers
-                ), "cond_layer_idx should be less than n_layers"
+                ), "cond_layer_idx는 n_layers보다 작아야 합니다."
         self.drop = nn.Dropout(p_dropout)
         self.attn_layers = nn.ModuleList()
         self.norm_layers_1 = nn.ModuleList()
@@ -190,8 +190,8 @@ class Decoder(nn.Module):
         h_mask: torch.Tensor,
     ) -> torch.Tensor:
         """
-        x: decoder input
-        h: encoder output
+        x: 디코더 입력
+        h: 인코더 출력
         """
         self_attn_mask = commons.subsequent_mask(x_mask.size(2)).to(
             device=x.device, dtype=x.dtype
@@ -365,7 +365,6 @@ class MultiHeadAttention(nn.Module):
     ) -> torch.Tensor:
         assert self.window_size is not None
         2 * self.window_size + 1  # type: ignore
-        # Pad first before slice to avoid using cond ops.
         pad_length = max(length - (self.window_size + 1), 0)
         slice_start_position = max((self.window_size + 1) - length, 0)
         slice_end_position = slice_start_position + 2 * length - 1
@@ -387,16 +386,16 @@ class MultiHeadAttention(nn.Module):
         ret: [b, h, l, l]
         """
         batch, heads, length, _ = x.size()
-        # Concat columns of pad to shift from relative to absolute indexing.
+        # 콘캣 extra 0 열을 추가하여 (len, 2*len) 모양으로 만듭니다.
         x = F.pad(x, commons.convert_pad_shape([[0, 0], [0, 0], [0, 0], [0, 1]]))
 
-        # Concat extra elements so to add up to shape (len+1, 2*len-1).
+        # 콘캣 extra 행을 추가하여 (len, len+1, 2*len) 모양으로 만듭니다.
         x_flat = x.view([batch, heads, length * 2 * length])
         x_flat = F.pad(
             x_flat, commons.convert_pad_shape([[0, 0], [0, 0], [0, length - 1]])
         )
 
-        # Reshape and slice out the padded elements.
+        # 마지막으로 (len, len) 모양으로 자릅니다.
         x_final = x_flat.view([batch, heads, length + 1, 2 * length - 1])[
             :, :, :length, length - 1 :
         ]
@@ -408,12 +407,10 @@ class MultiHeadAttention(nn.Module):
         ret: [b, h, l, 2*l-1]
         """
         batch, heads, length, _ = x.size()
-        # pad along column
         x = F.pad(
             x, commons.convert_pad_shape([[0, 0], [0, 0], [0, 0], [0, length - 1]])
         )
         x_flat = x.view([batch, heads, length**2 + length * (length - 1)])
-        # add 0's in the beginning that will skew the elements after reshape
         x_flat = F.pad(x_flat, commons.convert_pad_shape([[0, 0], [0, 0], [length, 0]]))
         x_final = x_flat.view([batch, heads, length, 2 * length])[:, :, :, 1:]
         return x_final
