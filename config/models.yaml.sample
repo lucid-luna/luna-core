@@ -5,6 +5,17 @@ version: "0.0.1"
 description: "Your model configuration description"
 author: "YourName"
 
+# ============================================
+# 메모리 및 요약 설정
+# ============================================
+memory:
+  max_entries: 50              # 최대 저장 대화 수
+  max_context_turns: 6         # LLM에 전달할 최근 대화 턴 수
+  max_context_tokens: 1500     # LLM 컨텍스트 최대 토큰 수 (0이면 턴 기반만 사용)
+  summary_threshold: 20        # 자동 요약 실행 기준 (턴 수)
+  enable_auto_summary: true    # 자동 요약 활성화
+  summary_language: "korean"   # 요약 언어 (korean/english)
+
 emotion:
   # 로컬 모델 디렉터리
   model_dir: "./checkpoints/EmotionModel"

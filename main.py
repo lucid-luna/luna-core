@@ -22,6 +22,7 @@ import yaml
 from pathlib import Path
 from fastapi import FastAPI, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.concurrency import asynccontextmanager
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.params import File
 from pydantic import BaseModel
@@ -89,6 +90,7 @@ async def lifespan(app: FastAPI):
     memory_config = {
         "max_entries": 50,
         "max_context_turns": 6,
+        "max_context_tokens": 1500,
         "summary_threshold": 20,
         "enable_auto_summary": True
     }
@@ -107,11 +109,18 @@ async def lifespan(app: FastAPI):
         memory_dir="./memory",
         max_entries=memory_config["max_entries"],
         max_context_turns=memory_config["max_context_turns"],
+        max_context_tokens=memory_config.get("max_context_tokens", 1500),
         summary_threshold=memory_config["summary_threshold"],
         enable_auto_summary=memory_config["enable_auto_summary"],
         llm_service=llm_service  # LLM 서비스 전달
     )
-    print(f"[L.U.N.A. Startup] 메모리 서비스 초기화 완료 (저장된 대화: {len(memory_service.load_memory())}개)")
+    
+    # 메모리 통계 조회
+    try:
+        stats = memory_service.get_memory_stats()
+        print(f"[L.U.N.A. Startup] 메모리 서비스 초기화 완료 (저장된 대화: {stats['conversations']}개, 요약: {stats['summaries']}개)")
+    except Exception as e:
+        print(f"[L.U.N.A. Startup] 메모리 서비스 초기화 완료 (통계 조회 실패: {e})")
     
     print("[L.U.N.A. Startup] TTS 서비스 초기화 중...")
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -154,6 +163,22 @@ app = FastAPI(
     description="L.U.N.A. Core Backend with MCP-based Agent",
     version="2.2.0-Agent",
     lifespan=lifespan
+)
+
+# CORS 미들웨어 설정
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:3001",
+        "http://127.0.0.1:3001",
+        "http://localhost:5173",  # Vite 개발 서버
+        "http://127.0.0.1:5173",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],  # 모든 HTTP 메서드 허용
+    allow_headers=["*"],  # 모든 헤더 허용
 )
 
 from fastapi.staticfiles import StaticFiles
@@ -264,9 +289,10 @@ async def analyze_vision(file: UploadFile = File(...)):
 
 # Text-to-Speech Synthesis Endpoint
 @app.post("/synthesize", response_model=SynthesizeResponse, tags=["Synthesis"])
-def synthesize_text(request: TextRequest):
+async def synthesize_text(request: TextRequest):
     """
     텍스트를 입력받아 TTS 음성 합성 결과를 반환합니다.
+    (비동기 처리로 성능 향상)
 
     Args:
         request (TextRequest): 합성할 텍스트
@@ -274,7 +300,32 @@ def synthesize_text(request: TextRequest):
         JSONResponse: 합성된 음성 파일의 URL 및 스타일 정보
     """
     try:
-        result: dict[str, Any] = tts_service.synthesize(
+        result: dict[str, Any] = await tts_service.synthesize_async(
+            text=request.text,
+            style=request.style,
+            style_weight=request.style_weight
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"[L.U.N.A. TTS] 합성 중 오류 발생: {str(e)}")
+    
+    return JSONResponse(
+        content=result
+    )
+
+@app.post("/synthesize/parallel", response_model=SynthesizeResponse, tags=["Synthesis"])
+async def synthesize_text_parallel(request: TextRequest):
+    """
+    텍스트를 입력받아 병렬 처리로 TTS 음성 합성 (긴 텍스트에 효과적)
+
+    Args:
+        request (TextRequest): 합성할 텍스트
+    Returns:
+        JSONResponse: 합성된 음성 파일의 URL 및 스타일 정보
+    """
+    try:
+        result: dict[str, Any] = await tts_service.synthesize_parallel(
             text=request.text,
             style=request.style,
             style_weight=request.style_weight
@@ -496,3 +547,356 @@ def clear_cache():
     
     llm_service.service.cache.clear()
     return {"status": "success", "message": "모든 캐시가 삭제되었습니다."}
+
+# TTS Cache Management Endpoints
+@app.get("/tts/cache/stats", tags=["TTS Cache"])
+def get_tts_cache_stats():
+    """TTS 캐시 통계 정보를 반환합니다."""
+    if not tts_service or not tts_service.cache:
+        return {"error": "TTS 캐시가 비활성화되어 있습니다."}
+    return tts_service.cache.get_stats()
+
+@app.post("/tts/cache/cleanup", tags=["TTS Cache"])
+def cleanup_tts_cache():
+    """만료된 TTS 캐시 항목을 정리합니다."""
+    if not tts_service or not tts_service.cache:
+        return {"error": "TTS 캐시가 비활성화되어 있습니다."}
+    
+    removed = tts_service.cache.cleanup_expired()
+    return {
+        "status": "success",
+        "removed": removed,
+        "message": f"{removed}개의 만료된 TTS 캐시가 삭제되었습니다."
+    }
+
+@app.delete("/tts/cache/clear", tags=["TTS Cache"])
+def clear_tts_cache():
+    """모든 TTS 캐시를 삭제합니다."""
+    if not tts_service or not tts_service.cache:
+        return {"error": "TTS 캐시가 비활성화되어 있습니다."}
+    
+    tts_service.cache.clear()
+    return {
+        "status": "success",
+        "message": "모든 TTS 캐시가 삭제되었습니다."
+    }
+
+# ==================== Memory Management API ====================
+
+@app.get("/memory/conversations", tags=["Memory"])
+def get_conversations(
+    user_id: str = "default",
+    session_id: str = "default",
+    limit: int = 50,
+    offset: int = 0
+):
+    """
+    대화 목록 조회
+    
+    Args:
+        user_id: 사용자 ID
+        session_id: 세션 ID
+        limit: 최대 개수 (1-1000)
+        offset: 시작 위치
+        
+    Returns:
+        대화 목록
+    """
+    if not memory_service:
+        raise HTTPException(status_code=503, detail="메모리 서비스가 준비되지 않았습니다.")
+    
+    from services.memory.database import get_db_manager
+    from services.memory.repository import MemoryRepository
+    
+    db_manager = get_db_manager()
+    repository = MemoryRepository(db_manager)
+    
+    conversations = repository.get_conversations(
+        user_id=user_id,
+        session_id=session_id,
+        limit=min(limit, 1000),
+        offset=offset
+    )
+    
+    return {
+        "conversations": [
+            {
+                "id": conv.id,
+                "timestamp": conv.timestamp.isoformat(),
+                "user_message": conv.user_message,
+                "assistant_message": conv.assistant_message,
+                "emotion": conv.emotion,
+                "intent": conv.intent,
+                "processing_time": conv.processing_time,
+                "cached": conv.cached
+            }
+            for conv in conversations
+        ],
+        "count": len(conversations),
+        "limit": limit,
+        "offset": offset
+    }
+
+@app.get("/memory/conversations/{conversation_id}", tags=["Memory"])
+def get_conversation(conversation_id: int):
+    """
+    특정 대화 조회
+    
+    Args:
+        conversation_id: 대화 ID
+        
+    Returns:
+        대화 상세 정보
+    """
+    if not memory_service:
+        raise HTTPException(status_code=503, detail="메모리 서비스가 준비되지 않았습니다.")
+    
+    from services.memory.database import get_db_manager
+    from services.memory.repository import MemoryRepository
+    
+    db_manager = get_db_manager()
+    repository = MemoryRepository(db_manager)
+    
+    conversation = repository.get_conversation_by_id(conversation_id)
+    
+    if not conversation:
+        raise HTTPException(status_code=404, detail="대화를 찾을 수 없습니다.")
+    
+    return {
+        "id": conversation.id,
+        "user_id": conversation.user_id,
+        "session_id": conversation.session_id,
+        "timestamp": conversation.timestamp.isoformat(),
+        "user_message": conversation.user_message,
+        "assistant_message": conversation.assistant_message,
+        "emotion": conversation.emotion,
+        "intent": conversation.intent,
+        "processing_time": conversation.processing_time,
+        "cached": conversation.cached,
+        "metadata": conversation.metadata,
+        "created_at": conversation.created_at.isoformat()
+    }
+
+@app.post("/memory/conversations/search", tags=["Memory"])
+def search_conversations(
+    user_id: str | None = None,
+    session_id: str | None = None,
+    keyword: str | None = None,
+    emotion: str | None = None,
+    intent: str | None = None,
+    limit: int = 50,
+    offset: int = 0
+):
+    """
+    대화 검색
+    
+    Args:
+        user_id: 사용자 ID
+        session_id: 세션 ID
+        keyword: 검색 키워드 (메시지 내용)
+        emotion: 감정 필터
+        intent: 의도 필터
+        limit: 최대 개수
+        offset: 시작 위치
+        
+    Returns:
+        검색 결과
+    """
+    if not memory_service:
+        raise HTTPException(status_code=503, detail="메모리 서비스가 준비되지 않았습니다.")
+    
+    from services.memory.database import get_db_manager
+    from services.memory.repository import MemoryRepository
+    from services.memory.models import ConversationSearchRequest
+    
+    db_manager = get_db_manager()
+    repository = MemoryRepository(db_manager)
+    
+    search_request = ConversationSearchRequest(
+        user_id=user_id,
+        session_id=session_id,
+        keyword=keyword,
+        emotion=emotion,
+        intent=intent,
+        limit=min(limit, 1000),
+        offset=offset
+    )
+    
+    results, total = repository.search_conversations(search_request)
+    
+    return {
+        "results": [
+            {
+                "id": conv.id,
+                "timestamp": conv.timestamp.isoformat(),
+                "user_message": conv.user_message,
+                "assistant_message": conv.assistant_message,
+                "emotion": conv.emotion,
+                "intent": conv.intent
+            }
+            for conv in results
+        ],
+        "total": total,
+        "count": len(results),
+        "limit": limit,
+        "offset": offset
+    }
+
+@app.delete("/memory/conversations/{conversation_id}", tags=["Memory"])
+def delete_conversation(conversation_id: int):
+    """
+    특정 대화 삭제
+    
+    Args:
+        conversation_id: 대화 ID
+        
+    Returns:
+        삭제 결과
+    """
+    if not memory_service:
+        raise HTTPException(status_code=503, detail="메모리 서비스가 준비되지 않았습니다.")
+    
+    from services.memory.database import get_db_manager
+    from services.memory.repository import MemoryRepository
+    
+    db_manager = get_db_manager()
+    repository = MemoryRepository(db_manager)
+    
+    success = repository.delete_conversation(conversation_id)
+    
+    if not success:
+        raise HTTPException(status_code=404, detail="대화를 찾을 수 없습니다.")
+    
+    return {
+        "status": "success",
+        "message": f"대화 {conversation_id}가 삭제되었습니다."
+    }
+
+@app.get("/memory/summaries", tags=["Memory"])
+def get_summaries(
+    user_id: str = "default",
+    session_id: str = "default",
+    limit: int = 10
+):
+    """
+    요약 목록 조회
+    
+    Args:
+        user_id: 사용자 ID
+        session_id: 세션 ID
+        limit: 최대 개수
+        
+    Returns:
+        요약 목록
+    """
+    if not memory_service:
+        raise HTTPException(status_code=503, detail="메모리 서비스가 준비되지 않았습니다.")
+    
+    from services.memory.database import get_db_manager
+    from services.memory.repository import MemoryRepository
+    
+    db_manager = get_db_manager()
+    repository = MemoryRepository(db_manager)
+    
+    summaries = repository.get_summaries(
+        user_id=user_id,
+        session_id=session_id,
+        limit=limit
+    )
+    
+    return {
+        "summaries": [
+            {
+                "id": summary.id,
+                "timestamp": summary.timestamp.isoformat(),
+                "content": summary.content,
+                "summarized_turns": summary.summarized_turns,
+                "created_at": summary.created_at.isoformat()
+            }
+            for summary in summaries
+        ],
+        "count": len(summaries)
+    }
+
+@app.get("/memory/stats", tags=["Memory"])
+def get_memory_stats(
+    user_id: str | None = None,
+    session_id: str | None = None
+):
+    """
+    메모리 통계 조회
+    
+    Args:
+        user_id: 사용자 ID (선택)
+        session_id: 세션 ID (선택)
+        
+    Returns:
+        메모리 통계 정보
+    """
+    if not memory_service:
+        raise HTTPException(status_code=503, detail="메모리 서비스가 준비되지 않았습니다.")
+    
+    from services.memory.database import get_db_manager
+    from services.memory.repository import MemoryRepository
+    
+    db_manager = get_db_manager()
+    repository = MemoryRepository(db_manager)
+    
+    stats = repository.get_stats(user_id=user_id, session_id=session_id)
+    
+    return {
+        "total_conversations": stats.total_conversations,
+        "total_summaries": stats.total_summaries,
+        "unique_users": stats.unique_users,
+        "unique_sessions": stats.unique_sessions,
+        "first_conversation": stats.first_conversation.isoformat() if stats.first_conversation else None,
+        "last_conversation": stats.last_conversation.isoformat() if stats.last_conversation else None,
+        "emotions_distribution": stats.emotions_distribution,
+        "intents_distribution": stats.intents_distribution,
+        "avg_processing_time": stats.avg_processing_time,
+        "cache_hit_rate": stats.cache_hit_rate,
+        "conversations_by_date": stats.conversations_by_date
+    }
+
+@app.delete("/memory/clear", tags=["Memory"])
+def clear_memory(
+    user_id: str = "default",
+    session_id: str = "default",
+    confirm: bool = False
+):
+    """
+    메모리 삭제 (주의!)
+    
+    Args:
+        user_id: 사용자 ID
+        session_id: 세션 ID
+        confirm: 삭제 확인 (true 필수)
+        
+    Returns:
+        삭제 결과
+    """
+    if not confirm:
+        raise HTTPException(
+            status_code=400,
+            detail="삭제를 확인하려면 confirm=true를 전달해야 합니다."
+        )
+    
+    if not memory_service:
+        raise HTTPException(status_code=503, detail="메모리 서비스가 준비되지 않았습니다.")
+    
+    from services.memory.database import get_db_manager
+    from services.memory.repository import MemoryRepository
+    
+    db_manager = get_db_manager()
+    repository = MemoryRepository(db_manager)
+    
+    deleted = repository.delete_conversations(
+        user_id=user_id,
+        session_id=session_id
+    )
+    
+    return {
+        "status": "success",
+        "deleted_conversations": deleted,
+        "message": f"{deleted}개의 대화가 삭제되었습니다."
+    }

@@ -3,6 +3,7 @@
 # ====================================================================
 import json
 import logging
+import asyncio
 from pathlib import Path
 from pydantic import BaseModel
 
@@ -186,11 +187,25 @@ class InteractionService:
                     "mode": "api" if is_api_mode else "server"
                 }
             )
-            self.logger.info(f"[Memory] 대화 저장 완료 (총 {len(self.memory_service.load_memory())}개)")
+            self.logger.info(f"[Memory] 대화 저장 완료")
             
             ja_text_for_tts = self.translator_service.translate(ko_response, "ko", "ja")
             style, style_weight = get_style_from_emotion(top_emotion)
-            tts_result = self.tts_service.synthesize(text=ja_text_for_tts, style=style, style_weight=style_weight)
+            
+            # TTS를 비동기로 실행
+            try:
+                loop = asyncio.get_event_loop()
+            except RuntimeError:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+            
+            tts_result = loop.run_until_complete(
+                self.tts_service.synthesize_async(
+                    text=ja_text_for_tts,
+                    style=style,
+                    style_weight=style_weight
+                )
+            )
 
             return InteractResponse(
                 text=ko_response, emotion=top_emotion, intent="general",
