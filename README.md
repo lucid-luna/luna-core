@@ -5,7 +5,6 @@
 <h1 align="center">⚙️ Luna Core</h1>
 <p align="center">
   <b>실시간 음성/시각 인터페이스와 멀티모달 AI 시스템을 위한 핵심 엔진</b><br/>
-  <i>Modular, Streamable, Real-Time ⏱️</i>
 </p>
 
 ---
@@ -33,6 +32,8 @@ luna-core/
 ---
 
 ## API Reference
+
+### 예시 API 리스트
 
 #### Speech-to-Text (STT)
 
