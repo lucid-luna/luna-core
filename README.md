@@ -25,82 +25,125 @@
 
 <pre>
 luna-core/
+├── main.py
 ├── README.md
-└── requirements.txt
+├── requirements.txt
+├── config/
+│   ├── models.yaml
+│   └── models.yaml.sample
+├── services/
+│   ├── asr.py
+│   ├── llm_api.py
+│   ├── tts.py
+│   ├── vision.py
+│   ├── emotion.py
+│   ├── multi_intent.py
+│   ├── interaction.py
+│   ├── cache.py
+│   ├── translator.py
+│   └── ...
+├── models/
+│   ├── emotion_model.py
+│   ├── tts_model.py
+│   ├── multiintent_model.py
+│   └── ...
+├── examples/
+│   ├── quick_start.py
+│   ├── llm_manager_example.py
+│   └── ...
+├── scripts/
+│   └── migrate_memory.py
+├── checkpoints/
+├── cache/
+├── memory/
+├── outputs/
+├── docs/
+└── utils/
 </pre>
 
 ---
 
 ## API Reference
 
-### 예시 API 리스트
+### 실제 API 엔드포인트 요약
 
-#### Speech-to-Text (STT)
+아래는 FastAPI 기반으로 구현된 주요 엔드포인트입니다. 실제 파라미터와 응답 구조는 코드(main.py 등)를 참고하세요.
 
-```http
-  POST /api/stt/stream
-```
+#### 실시간 음성 인식 (ASR)
 
-| Parameter | Type   | Description                            |
-| :-------- | :----- | :------------------------------------- |
-| audio     | bytes  | **Required**. PCM 오디오 스트림         |
-| language  | string | 언어 코드 (예: "ko-KR")                |
-| api       | string | "azure" 또는 "whisper" 중 하나         |
+- **WebSocket** `/ws/asr` : PCM 오디오 스트림을 실시간으로 전송하면, 텍스트 변환 및 전체 파이프라인 결과를 반환합니다.
 
-#### Text Generation (LLM)
+#### 텍스트 생성 (LLM)
 
-```http
-  POST /api/llm/generate
-```
+- **POST** `/generate`
+    - 요청: `{ input: str, temperature: float, max_tokens: int }`
+    - 응답: `{ content: str }`
 
-| Parameter | Type   | Description                            |
-| :-------- | :----- | :------------------------------------- |
-| prompt    | string | **Required**. 프롬프트 텍스트           |
-| model_id  | string | 사용할 모델 키 ("luna-main" 등)         |
+#### 텍스트 상호작용 (대화)
 
-#### Text-to-Speech (TTS)
+- **POST** `/interact`
+    - 요청: `{ input: str }`
+    - 응답: `{ ... }` (상호작용 결과)
+- **POST** `/interact/stream`
+    - 요청: `{ input: str }`
+    - 응답: `text/event-stream` (실시간 스트리밍)
 
-```http
-  POST /api/tts/speak
-```
+#### 음성 합성 (TTS)
 
-| Parameter | Type   | Description                            |
-| :-------- | :----- | :------------------------------------- |
-| text      | string | **Required**. 음성으로 변환할 텍스트    |
-| voice     | string | 음성 프리셋 이름 ("luna", "mika" 등)    |
+- **POST** `/synthesize`
+    - 요청: `{ text: str, style: str, style_weight: float }`
+    - 응답: `{ audio_url: str }`
+- **POST** `/synthesize/parallel`
+    - 요청: `{ text: str, style: str, style_weight: float }`
+    - 응답: `{ audio_url: str }` (병렬 처리)
 
-#### Vision Tagging
+#### 이미지 분석 (Vision)
 
-```http
-  POST /api/vision/tag
-```
+- **POST** `/analyze/vision`
+    - 요청: `file` (이미지 업로드)
+    - 응답: `{ answer: str }`
 
-| Parameter | Type   | Description                            |
-| :-------- | :----- | :------------------------------------- |
-| image     | file   | **Required**. 입력 이미지               |
-| model_id  | string | 사용할 모델 ID ("lunavision")          |
+#### 번역
 
-#### Plugin: Web Search
+- **POST** `/translate`
+    - 요청: `{ text: str, from_lang: str, to_lang: str }`
+    - 응답: `{ translated_text: str }`
 
-```http
-  POST /api/plugins/search
-```
+#### 메모리 관리
 
-| Parameter | Type   | Description                            |
-| :-------- | :----- | :------------------------------------- |
-| query     | string | **Required**. 검색할 문장              |
-| engine    | string | 검색 엔진 ("google", "duckduckgo" 등) |
+- **GET** `/memory/stats` : 메모리 통계 조회
+- **GET** `/memory/recent?count=10` : 최근 대화 내역 조회
+- **DELETE** `/memory/clear` : 모든 대화 삭제
+- **POST** `/memory/summarize` : 대화 요약 강제 실행
+- **GET** `/memory/summary` : 현재 저장된 요약 반환
+
+#### 캐시 관리
+
+- **GET** `/cache/stats` : LLM 캐시 통계
+- **POST** `/cache/cleanup` : 만료 캐시 정리
+- **DELETE** `/cache/clear` : 모든 캐시 삭제
+
+- **GET** `/tts/cache/stats` : TTS 캐시 통계
+- **POST** `/tts/cache/cleanup` : 만료 TTS 캐시 정리
+- **DELETE** `/tts/cache/clear` : 모든 TTS 캐시 삭제
+
+#### 기타
+
+- **GET** `/health` : 서버 상태 확인
+- **GET** `/spotify/callback` : Spotify 인증 콜백
+
+각 엔드포인트의 실제 파라미터/응답 구조는 main.py 및 각 서비스 파일을 참고하세요.
 
 ---
 
 ## ⚙️ 향후 개발 계획
 
-- [ ] STT 모듈 완성
-- [ ] TTS 음성 출력 캐릭터 프리셋 및 감정 연동 구조 확장
-- [ ] LLM WebSocket 스트리밍 처리 개선 및 캐릭터 메모리 연동
-- [ ] Vision API → luna-models 연동
+- [x] STT 모듈 완성 (`services/asr.py`, `/ws/asr`)
+- [x] TTS 음성 출력 캐릭터 프리셋 및 감정 연동 구조 (`services/tts.py`, `/synthesize`)
+- [x] LLM WebSocket 스트리밍 처리 및 캐릭터 메모리 연동 (`services/llm_manager.py`, `/interact/stream`, `/memory/*`)
+- [x] Vision API → luna-models 연동 (`services/vision.py`, `/analyze/vision`)
 - [ ] 캐릭터 상태 전송 시스템 구성
-- [ ] Plugin 실행 구조 표준화 (search, calculate, spotify 등)
+- [x] Plugin 실행 구조 표준화 (search, calculate, spotify 등) (`services/mcp/tool_registry.py`, `/spotify/callback`)
 - [ ] /api/context 기반 세션 기억/복원 시스템 구축
 
 ---
