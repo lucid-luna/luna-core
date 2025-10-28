@@ -210,3 +210,5 @@ pretrained
 pretrained_jp_extra
 bert
 slm
+
+.spotify_cache
