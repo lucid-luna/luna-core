@@ -13,9 +13,9 @@ class ResponseCache:
     def __init__(
         self,
         cache_dir: str = "./cache",
-        ttl: int = 3600,  # Time To Live: 1시간 (초 단위)
-        max_cache_size: int = 100,  # 최대 캐시 항목 수
-        similarity_threshold: float = 0.9  # 유사도 임계값
+        ttl: int = 3600,
+        max_cache_size: int = 100,
+        similarity_threshold: float = 0.9,
     ):
         """
         응답 캐싱 시스템
@@ -33,7 +33,6 @@ class ResponseCache:
         self.max_cache_size = max_cache_size
         self.similarity_threshold = similarity_threshold
         
-        # 통계
         self.stats = {
             "hits": 0,
             "misses": 0,
@@ -49,15 +48,13 @@ class ResponseCache:
             with open(self.cache_file, 'r', encoding='utf-8') as f:
                 return json.load(f)
         except Exception as e:
-            print(f"[Cache] 캐시 로드 실패: {e}")
+            print(f"[L.U.N.A. Cache] 캐시 로드 실패: {e}")
             return {}
     
     def _save_cache(self, cache: Dict[str, Any]):
         """캐시 파일 저장"""
         try:
-            # 크기 제한
             if len(cache) > self.max_cache_size:
-                # 오래된 항목부터 삭제 (timestamp 기준)
                 sorted_items = sorted(
                     cache.items(),
                     key=lambda x: x[1].get("timestamp", 0)
@@ -67,7 +64,7 @@ class ResponseCache:
             with open(self.cache_file, 'w', encoding='utf-8') as f:
                 json.dump(cache, f, ensure_ascii=False, indent=2)
         except Exception as e:
-            print(f"[Cache] 캐시 저장 실패: {e}")
+            print(f"[L.U.N.A. Cache] 캐시 저장 실패: {e}")
     
     def _generate_key(self, prompt: str, model: str = "", context_hash: str = "") -> str:
         """
@@ -81,7 +78,6 @@ class ResponseCache:
         Returns:
             str: 캐시 키 (SHA256 해시)
         """
-        # 입력을 정규화 (소문자, 공백 제거)
         normalized = prompt.lower().strip()
         combined = f"{normalized}|{model}|{context_hash}"
         return hashlib.sha256(combined.encode('utf-8')).hexdigest()
@@ -130,19 +126,16 @@ class ResponseCache:
         cache = self._load_cache()
         key = self._generate_key(prompt, model, context_hash)
         
-        # 정확히 일치하는 캐시 확인
         if key in cache:
             entry = cache[key]
             if not self._is_expired(entry["timestamp"]):
                 self.stats["hits"] += 1
-                print(f"[Cache] 캐시 히트 (정확 일치): {prompt[:50]}...")
+                print(f"[L.U.N.A. Cache] 캐시 히트 (정확 일치): {prompt[:50]}...")
                 return entry["response"]
             else:
-                # 만료된 캐시 삭제
                 del cache[key]
                 self._save_cache(cache)
         
-        # 유사한 질문 검색
         if use_similarity:
             for cached_key, entry in cache.items():
                 if self._is_expired(entry["timestamp"]):
@@ -153,11 +146,11 @@ class ResponseCache:
                 
                 if similarity >= self.similarity_threshold:
                     self.stats["hits"] += 1
-                    print(f"[Cache] 캐시 히트 (유사도: {similarity:.2f}): {cached_prompt[:50]}...")
+                    print(f"[L.U.N.A. Cache] 캐시 히트 (유사도: {similarity:.2f}): {cached_prompt[:50]}...")
                     return entry["response"]
         
         self.stats["misses"] += 1
-        print(f"[Cache] 캐시 미스: {prompt[:50]}...")
+        print(f"[L.U.N.A. Cache] 캐시 미스: {prompt[:50]}...")
         return None
     
     def set(
@@ -188,16 +181,16 @@ class ResponseCache:
         
         self._save_cache(cache)
         self.stats["saves"] += 1
-        print(f"[Cache] 캐시 저장: {prompt[:50]}...")
+        print(f"[L.U.N.A. Cache] 캐시 저장: {prompt[:50]}...")
     
     def clear(self):
         """모든 캐시 삭제"""
         try:
             if self.cache_file.exists():
                 self.cache_file.unlink()
-            print("[Cache] 캐시 삭제 완료")
+            print("[L.U.N.A. Cache] 캐시 삭제 완료")
         except Exception as e:
-            print(f"[Cache] 캐시 삭제 실패: {e}")
+            print(f"[L.U.N.A. Cache] 캐시 삭제 실패: {e}")
     
     def get_stats(self) -> Dict[str, Any]:
         """
@@ -228,7 +221,6 @@ class ResponseCache:
         cache = self._load_cache()
         original_size = len(cache)
         
-        # 만료되지 않은 항목만 유지
         cache = {
             k: v for k, v in cache.items()
             if not self._is_expired(v["timestamp"])
@@ -237,6 +229,6 @@ class ResponseCache:
         removed = original_size - len(cache)
         if removed > 0:
             self._save_cache(cache)
-            print(f"[Cache] 만료된 캐시 {removed}개 삭제")
+            print(f"[L.U.N.A. Cache] 만료된 캐시 {removed}개 삭제")
         
         return removed

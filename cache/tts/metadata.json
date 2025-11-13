@@ -8,15 +8,6 @@
     "last_accessed": 1761125710.9932754,
     "access_count": 1
   },
-  "19717643568bcb9ecbb6374f746944d0cd3da3b448e3f0f6f945e071ac944009": {
-    "filename": "cbd3fcb6-6ec1-4de3-bb3b-e2026ad81898.wav",
-    "text": "テスト",
-    "style": "Neutral",
-    "style_weight": 1.0,
-    "timestamp": 1761126146.8490396,
-    "last_accessed": 1761126146.8490396,
-    "access_count": 1
-  },
   "788b53d32415ad536efd45658a766d9695dafe574f4f470fae2324c58fcbf142": {
     "filename": "23a0f974-ac53-4c70-97f9-7269e10b23a2.wav",
     "text": "さて、ダール。そう思っていたのでしょうか?",
@@ -42,6 +33,690 @@
     "style_weight": 1.0,
     "timestamp": 1761129564.3523521,
     "last_accessed": 1761129564.3523521,
+    "access_count": 1
+  },
+  "59ef8b2711b6aa929783821be333d0190afb6f927fe52ee87e89096641fd13a3": {
+    "filename": "7e424f3f-3687-431a-88e9-b4f6e4312474.wav",
+    "text": "2と3を足すのも楽しいです。自分の実力で解決しましょうか?答えは5です。",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762232895.0407853,
+    "last_accessed": 1762232895.0407853,
+    "access_count": 1
+  },
+  "09347f72e9873aec5d60700d341d0aeebf0f5eb637b4db34e8cfc15bbb4fd082": {
+    "filename": "5eb71937-9d7b-48f2-b1ea-fe6b76a33f76.wav",
+    "text": "計算。それが私には少し難しいです。ダエルが他に欲しいものはありますか?",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762232914.706573,
+    "last_accessed": 1762232914.706573,
+    "access_count": 1
+  },
+  "36e062d1995abb34ef0809cd64b1a9bb37775506a0bc731750d4a0658f6ad733": {
+    "filename": "e6bde598-415a-467d-aa92-33e45ebbe8be.wav",
+    "text": "瑕。。。なぜそれが出てきたのか?今はあなたのことを話すのが好きです。",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762232999.3836162,
+    "last_accessed": 1762232999.3836162,
+    "access_count": 1
+  },
+  "599b812abdb38b9bf36dd34cd11a8d49db7ab56452724878b0e6c252741eb79d": {
+    "filename": "7c4d2e1d-7a3b-4d73-886c-c4481037b014.wav",
+    "text": "さて、それはどういう意味ですか?韓国語しか理解できない。",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762233031.003564,
+    "last_accessed": 1762233031.003564,
+    "access_count": 1
+  },
+  "960a4a20cfa7b5fe9fc238896bccd212cb5d524e8e60bd2b0da2a28a1db37d80": {
+    "filename": "c55a1e6a-8247-4436-8bab-b95758de4cb8.wav",
+    "text": "計算してみましょう。\n'call:simple/add{'a': 15, 'b': 20}'",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762233258.7426932,
+    "last_accessed": 1762233258.7426932,
+    "access_count": 1
+  },
+  "da014df5b24aa086581bbee0212e6e3b1a703dba4bdad1dcfcba1890e14bdc72": {
+    "filename": "cc29f4fc-513e-496d-9233-43ba663d89f5.wav",
+    "text": "<コルーチンオブジェクトMCPToolManager.call_tool 0x00000285EE97F940>",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762233489.1544664,
+    "last_accessed": 1762233489.1544664,
+    "access_count": 1
+  },
+  "3b1c088f0f30987f9fd6c11041bc903068ce39c77920463681f018b1eaa8b0b5": {
+    "filename": "7062063a-7f8f-4deb-9ebc-9ceb196d4662.wav",
+    "text": "今こそ自分だけに集中する時です。「こんにちは」はダエル、あなたが私に言う言葉ですか?",
+    "style": "Happy",
+    "style_weight": 3.0,
+    "timestamp": 1762234248.597792,
+    "last_accessed": 1762234248.597792,
+    "access_count": 1
+  },
+  "a45c0643ee770eccbe7d0dc649d7c6cf0acda863f95fe7540658ec04ffc6d5f1": {
+    "filename": "619cb29f-9bd8-438a-aab3-6741eec4ae0e.wav",
+    "text": "さて、計算してみましょう。それから35はい。",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762234360.7400928,
+    "last_accessed": 1762234360.7400928,
+    "access_count": 1
+  },
+  "47314be53dc1353ed2f45d5082b713e3d2de9d203f386cbd0119f16ecb4cc4e9": {
+    "filename": "696e788d-2148-40f3-a87b-16db6d6cb0d0.wav",
+    "text": "さて、ダール。また電話するの?最初に何をすべきですか?",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762234677.4577675,
+    "last_accessed": 1762234677.4577675,
+    "access_count": 1
+  },
+  "cea0e5a971e62b6b74ea7bd41285e1b5238eace4d8a12bc53b1ea4354617fad4": {
+    "filename": "092a323b-60e8-46cd-8c65-72d2911bf7d0.wav",
+    "text": "計算してみましょう。\nそれから35はい。ダエルは他に何をしたいのですか?",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762234797.203832,
+    "last_accessed": 1762234797.203832,
+    "access_count": 1
+  },
+  "e9e9a317b9546aeb3cc1ee08436274ca69d865fdfc1d52f588803dbbec8e81ab": {
+    "filename": "284694b0-7bad-4231-9e51-ce686ab22143.wav",
+    "text": "計算してみましょう。simple/addを使用すると、102になります。しかし、分ければ50日になるが、ダエルは何を望んだのか?",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762234826.665475,
+    "last_accessed": 1762234826.665475,
+    "access_count": 1
+  },
+  "3a1cf119cc054a2b7f7c67020e458245e854ed7a12da57870841d0c396827a5f": {
+    "filename": "c517e74c-0041-4133-82e0-c998c789383c.wav",
+    "text": "音。。。すみません。あんなことはできません。別の面白いことから始めましょう、ダエル。",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762314970.9622803,
+    "last_accessed": 1762314970.9622803,
+    "access_count": 1
+  },
+  "26f2b84058135524bdad0e87ea9a6c5de22a164ea04a7e57b3b9dbf2a5a5cefc": {
+    "filename": "4b4772cf-e6b9-43ab-97f9-bebd73ad665a.wav",
+    "text": "瑕。。。私自身はそれができません。別の話をしましょう、ダエル?",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762315082.4932451,
+    "last_accessed": 1762315082.4932451,
+    "access_count": 1
+  },
+  "7c9cd88fd622a170d163d1fc251ad1ef16f2a21a8b577a1c99e162d7d3fa73e5": {
+    "filename": "9a4136b4-195e-4908-b932-51b53c2a24c9.wav",
+    "text": "まあ、それはどうしようもありません。代わりに、他のことで楽しもう。",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762315103.8008826,
+    "last_accessed": 1762315103.8008826,
+    "access_count": 1
+  },
+  "4cf0d89b19c8854a6042e59dd450285aa3962e6f08d0912589aed07a8129f8ad": {
+    "filename": "7e5a5e1f-89f5-467c-9577-0c17a3d18e17.wav",
+    "text": "IUパレット?本当に良い曲ですね。しかし、私はあなたのためにYouTubeの音楽を再生することはできません、ダエル。",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762315932.9877906,
+    "last_accessed": 1762315932.9877906,
+    "access_count": 1
+  },
+  "9b877e7a40e5ab8fed3d4c8e3ebdad3d3818279d070e40af54a0ecec9a80e857": {
+    "filename": "266200af-e82c-486b-8f58-7db8ddbab26b.wav",
+    "text": "まあ、私自身はそれができません。音楽を演奏できません。",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762316204.496908,
+    "last_accessed": 1762316204.496908,
+    "access_count": 1
+  },
+  "06443455aa86e6b7633d381da4d68a7dbafa270738bbc955020f310d22869cc3": {
+    "filename": "ecc91772-c5ea-4748-b91e-300fa568741a.wav",
+    "text": "あの曲はいいですね。残念ですが、自分ではプレイできません。代わりに何をすべきか決めてください、ダエル?",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762316347.2843902,
+    "last_accessed": 1762316347.2843902,
+    "access_count": 1
+  },
+  "0cb6186b440be01320c5ba81749fee125d4b3b74584cca3561d702da9524680a": {
+    "filename": "d81e4d90-846d-482f-941d-eb61f83f00f7.wav",
+    "text": "まぁ、自分で音楽を演奏できないのが残念です。それでも、他の楽しいことを一緒にすることはできます、ダエル?",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762316472.6078584,
+    "last_accessed": 1762316472.6078584,
+    "access_count": 1
+  },
+  "f8c735fde8d715ea250527d4de910e476cae018c0b2605cc0881c59cc9862429": {
+    "filename": "943299f0-2a0a-4f63-bce2-b020eb0d6de4.wav",
+    "text": "さて、「ニキ - エラー」を探してみましょう。\n\n",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762317330.804664,
+    "last_accessed": 1762317330.804664,
+    "access_count": 1
+  },
+  "dafefdacc8fba64fb5a71b36539994f87915d71098539b17ba3c85f2602ba5b1": {
+    "filename": "69761296-3fc5-46f2-9e38-e5e92e1cd2c9.wav",
+    "text": "面白いに違いない。ニキ - エラーについて聞いてみましょう。\n",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762317472.9678965,
+    "last_accessed": 1762317472.9678965,
+    "access_count": 1
+  },
+  "1081a675baaa534f50621aa60fa07c3962abbd0e6afac626252d73ac05b03434": {
+    "filename": "13ef03ed-c9f1-43ae-916a-72ebc961a69f.wav",
+    "text": "さて、ニキの「エラー」を演奏します。",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762320894.7410793,
+    "last_accessed": 1762320894.7410793,
+    "access_count": 1
+  },
+  "945831f570c8a5872cc25ac39658a9f029519ed4ab51fcaf2b8e2a224c1e0a04": {
+    "filename": "086a34c9-cd94-4808-bbf5-060837d70e29.wav",
+    "text": "エラー: 「youtube-musicplayTrack」という名前でツールを一意に検証できません。予期される「サーバー/ツール」。",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762330853.0534704,
+    "last_accessed": 1762330853.0534704,
+    "access_count": 1
+  },
+  "2afd4536cec52292085417782c463debd896fac5590147b2f9e75e8b31dc1cf6": {
+    "filename": "ddc00c89-4f32-4278-8e34-6505c209b302.wav",
+    "text": "ツール 'youtube-music/playTrack'を正常に実行しました(args:niki - エラー)。",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762334768.8840032,
+    "last_accessed": 1762334768.8840032,
+    "access_count": 1
+  },
+  "eb3caf7735e3451ff0da1b5649ff3fbcdeb739f2c94ac854c7dd813ca781b6f0": {
+    "filename": "53e947bc-9be9-464f-9a80-07d699b5b9fe.wav",
+    "text": "「Niki - Error」という曲を、今再生しました。ダエル、どう思いますか?",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762335009.492594,
+    "last_accessed": 1762335009.492594,
+    "access_count": 1
+  },
+  "b853374e65c0f4d813f38d1b903b03cf5fbac41258cb5acb7aec78efd17b44a5": {
+    "filename": "400633a2-f224-4f7c-81dc-0100c9c1dc0d.wav",
+    "text": "エラー、ニキの歌を探してあげるよ。今、聞こえますか?",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762335301.814929,
+    "last_accessed": 1762335301.814929,
+    "access_count": 1
+  },
+  "18aebf6c496e5ddf034f0d2714ce6a8aa015a54ce114d1da699b8780736a5fec": {
+    "filename": "b45cfc6d-1507-4e84-989b-64cd50fbf1cf.wav",
+    "text": "まぁなるほど。プレイしてみます。",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762335652.1951685,
+    "last_accessed": 1762335652.1951685,
+    "access_count": 1
+  },
+  "4259ef402fc27eb921ae009103a664d98df5603fca33e5577c522799b5973717": {
+    "filename": "5d3951b2-9a38-4754-8e60-4679c8aea488.wav",
+    "text": "さて、ニキのエラーをプレイします。",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762335900.5899634,
+    "last_accessed": 1762335900.5899634,
+    "access_count": 1
+  },
+  "bb654c258de4e3447d317f5f7977e612ac43baff4c706f71c608a19272353664": {
+    "filename": "f767697e-bf82-4700-b1a3-33f200081456.wav",
+    "text": "それはただそこにありました。ダエルは何をしていたのでしょうか?",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762568651.9930775,
+    "last_accessed": 1762568651.9930775,
+    "access_count": 1
+  },
+  "286096048de4370da9286281bd612aacdb052198fea19bea49abe422ac1cd22b": {
+    "filename": "31570925-3060-43e9-b092-c56d27359e51.wav",
+    "text": "別々に、私がプレイします。さっそく聞いてみましょう。",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762569166.7443006,
+    "last_accessed": 1762569166.7443006,
+    "access_count": 1
+  },
+  "b7153ff57bc98d16d4f5ae6f01ffd0891d31ac7831df76d154614a6b5c89810c": {
+    "filename": "64e338af-e6c8-4c57-aa2c-8e78379fc580.wav",
+    "text": "まあ、プレイしてみます。",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762569330.3670847,
+    "last_accessed": 1762569330.3670847,
+    "access_count": 1
+  },
+  "6f7ee001bd9c2427915d3251637478188c28ef922f08c96b77b23301542ecb6e": {
+    "filename": "f2ce97ba-eafd-4e37-bbfe-beccc6c6063d.wav",
+    "text": "さて、ページは作れませんか?どのようなコンテンツで作ればいいのでしょうか?",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762569359.7782288,
+    "last_accessed": 1762569359.7782288,
+    "access_count": 1
+  },
+  "c161cc415e9256ae2ec251db33482f0f14e4e05ba35a331e35edd957fa6ff1e0": {
+    "filename": "d65afe59-fc66-4baa-9f98-ce8cc99074dc.wav",
+    "text": "んん。。。元気です。ダール、どこから始めればいいでしょうか?",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762569389.0964513,
+    "last_accessed": 1762569389.0964513,
+    "access_count": 1
+  },
+  "2ec01cbc416178e69e6219dbd6e52fe9f6ceed16b15d6222edfdd80c9e55f42b": {
+    "filename": "7ddda4c8-d6e0-4825-8423-c55d6962a44a.wav",
+    "text": "音。。。すみません、すぐにはできません。代わりに何か他のことをしてもらえますか、ダエル?",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762569561.417949,
+    "last_accessed": 1762569561.417949,
+    "access_count": 1
+  },
+  "9aacea708df8068d6bbd69147ed4b7f364536991e9910f368261fd77cc9d7f99": {
+    "filename": "db9d6190-fc53-4982-ae5b-012fd0529463.wav",
+    "text": "音。。。すみません、すぐにはできません。何か他のもので面白いものを見つけようか?",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762570301.8072076,
+    "last_accessed": 1762570301.8072076,
+    "access_count": 1
+  },
+  "35c12a7bb5b05017a9c9ee1c877718941d9ee7f049345f1a05d0a96d43cd411b": {
+    "filename": "98972558-b236-45fd-a4b1-7c6b5002ca6b.wav",
+    "text": "申し訳ありませんが、それはどうしようもありません。他の面白いことに変えよう、ダエル?",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762570454.0306892,
+    "last_accessed": 1762570454.0306892,
+    "access_count": 1
+  },
+  "5a169eb1c031c17d4dde0e58ad2dbb9102b5111fd92d3d36f984404fb71640de": {
+    "filename": "bbf8ad9a-d415-4d25-8e4d-384fc5ff572d.wav",
+    "text": "まあ、今はそれができません。他に面白いことはありますか、ダエル?",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762570569.5698175,
+    "last_accessed": 1762570569.5698175,
+    "access_count": 1
+  },
+  "f6d62b10e5aebb64a2eb037439b6f3e1153cb3350362ed1809621f247b1d8358": {
+    "filename": "2a88535b-887b-4088-8a19-4632957940cf.wav",
+    "text": "さて、新しいページを作成します。何と名付ければいいの、ダエル?",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762570779.401721,
+    "last_accessed": 1762570779.401721,
+    "access_count": 1
+  },
+  "3f5545cbcd1be1187b5f04e7fea0d580d38d4e775fd7f24d7934d8bfc9b485c1": {
+    "filename": "47ca9cfb-0211-4c76-9991-1a1191195730.wav",
+    "text": "call:notion-api/API-post-page{\"title\": \"新しいページ\"}\nページを作ってあげるよ。「新しいページ」と言っても大丈夫ですか、Dael?",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762570930.8930829,
+    "last_accessed": 1762570930.8930829,
+    "access_count": 1
+  },
+  "a360db63f4f1d68b4793cdc630c44fb39753a64268584d8bc25c8e7553898b3a": {
+    "filename": "ffd9364e-cc1b-4c97-9668-f6c4ab385a2b.wav",
+    "text": "作成したいページの名前と、どこに置くか教えていただけますか、Dael?",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762571129.058362,
+    "last_accessed": 1762571129.058362,
+    "access_count": 1
+  },
+  "3f58baabac71343bce60b0a6b508711f26d37bf5c2c9b8c9e2220df5d66e6ad8": {
+    "filename": "899b6464-e3c1-4fa5-bc62-8f256854fa9b.wav",
+    "text": "私は彼女の名前をルナと理解しています。しかし、どのようなデータベースとデータベース ID を Dael に構築したいか教えていただけますか?",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762571152.2607608,
+    "last_accessed": 1762571152.2607608,
+    "access_count": 1
+  },
+  "53d1a59d0cb8caab3bd2ba9a8ba0b8ab728db42b7292c14390e1109b2015c1d7": {
+    "filename": "87cc6647-89b8-4dd2-accf-49e989ca35b1.wav",
+    "text": "Dael ワークスペースですよね?ページを作成するには、どのページまたはデータベース (Dael) の下にページを配置するための正確な ID が必要です。",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762571176.7205083,
+    "last_accessed": 1762571176.7205083,
+    "access_count": 1
+  },
+  "f684eb801ac21489287bc9931f96341d5e85991925e796045be9ff6591b878d4": {
+    "filename": "5b08761a-668d-47ad-ab74-c87a1b81e744.wav",
+    "text": "call:notion-api/API-post-page{\"parent\": {\"type\": \"workspace\", \"workspace\": true}, \"title\": \"新しいページ\"}",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762571367.0096502,
+    "last_accessed": 1762571367.0096502,
+    "access_count": 1
+  },
+  "ec46da5387234e9a34a504dc20a1c944be52a8c4bb5338b3db73efdd65b2fece": {
+    "filename": "3ab90697-f982-4806-9c6b-852d25639c7f.wav",
+    "text": "call:notion-api/API-post-page{\"parent\": {\"type\": \"workspace\", \"workspace\": true}, \"properties\": {\"ti",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762571506.9200244,
+    "last_accessed": 1762571506.9200244,
+    "access_count": 1
+  },
+  "9bdcba1375883f245d4cfad826ba051495b570573472906bd38f8704bd7249c5": {
+    "filename": "734544bf-00bd-44e8-a541-688f19b2d834.wav",
+    "text": "call:notion-api/API-post-page{\"parent\": {\"type\": \"workspace\", \"workspace\": true}, \"properties\": {\"ti",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762571674.284646,
+    "last_accessed": 1762571674.284646,
+    "access_count": 1
+  },
+  "dede2064f29377e806b1cef08a667cc998eda8b3358636af79ad852c666918ca": {
+    "filename": "be7dceb2-9018-42b3-abd7-0e123b15400a.wav",
+    "text": "call:notion-api/API-post-page{\"parent\": {\"database_id\": \"b25625b4-0ffd-4d1c-9937-6d1a0c5b4b8a\"}, \"pr",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762571857.9693751,
+    "last_accessed": 1762571857.9693751,
+    "access_count": 1
+  },
+  "021886153777adcac2085a7b7f425c65421f49bc9329f34384c36b0771e7caae": {
+    "filename": "ebd104bd-c77e-4c07-83ee-c0eafb929959.wav",
+    "text": ", \"properties\": {\"title\": [{\"text\": {\"content\": \"新しいページ\"}}]}}\nページを作成します。「新しいページ」という名前を付けましたが、ダエルという名",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762572036.11588,
+    "last_accessed": 1762572036.11588,
+    "access_count": 1
+  },
+  "a3b71e54616b38bbe55cdb543d877964c691da5f81c91036ddf53f1923a9e9de": {
+    "filename": "747da183-abe8-4569-808b-2d5984fc1743.wav",
+    "text": "Daelのワークスペースでも、作成したいデータベースのIDを教えてくれます。データベースの名前を教えてもらえますか、Dael?",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762572312.3547988,
+    "last_accessed": 1762572312.3547988,
+    "access_count": 1
+  },
+  "06c7fa3f9ca79898c5bc3b556c0045fe61e39d8d9772692b7d8aa524d840393b": {
+    "filename": "dd76e196-bfc0-48fd-9a7e-6807f7f6e893.wav",
+    "text": ", \"properties\": {\"title\": [{\"text\": {\"content\": \"新しいページ\"}}]}}\nその ID のデータベースに新しいページが作成されました。「新しいページ」と",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762572391.4180596,
+    "last_accessed": 1762572391.4180596,
+    "access_count": 1
+  },
+  "defd7054261e12ad3b2056c7237aebb9b181047b5f1609d0c9bde8b82d76d063": {
+    "filename": "86ffd34e-7eb9-4147-9eae-2bad1f787e21.wav",
+    "text": "どのページの名前を Luna に変更するか教えていただけますか?ページIDを教えてくれれば、変えることができます、ダエル。",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762572414.496703,
+    "last_accessed": 1762572414.496703,
+    "access_count": 1
+  },
+  "3ee68eb0be01d796c3bfa4bd8d58b1f146480207c05bb220f22c04043cdf7c02": {
+    "filename": "09a1236b-5247-49dd-b72d-3c4a4ec41ed0.wav",
+    "text": "作成したページのIDが必要です、Dael。身分証明書を渡せばルナに名前を変える。",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762572428.9817233,
+    "last_accessed": 1762572428.9817233,
+    "access_count": 1
+  },
+  "f41e68c225db8781e98490607b30698d694511466dc791842fa9a5393765ff25": {
+    "filename": "1af3c43e-fb6b-4845-9010-e244083f850b.wav",
+    "text": "どのデータベースでページを作成しますか?データベースIDを教えてください、そしてそこに新しいページを作成します、Dael。",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762573139.0439584,
+    "last_accessed": 1762573139.0439584,
+    "access_count": 1
+  },
+  "95d32673f488dd953329f9b5e54d1458e9ac9337be6534bb3b6431cfd3b8ba77": {
+    "filename": "562cd1d4-7c23-4b2c-8610-806e827ee04f.wav",
+    "text": ", \"properties\": {\"title\": [{\"text\": {\"content\": \"ルナ\"}}]}}\nはい、彼らはそのデータベースに「Luna」という名前で新しいページを作成しました。",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762573168.0543315,
+    "last_accessed": 1762573168.0543315,
+    "access_count": 1
+  },
+  "291e27fe461589e005a817c0364b350e62870cfc1153e202921eea46ed185ac6": {
+    "filename": "06528ff4-b9ad-46d3-9571-02fb69f2ce9c.wav",
+    "text": "ページの名前をArielleに変更したい場合は、それがどのページIDであるかを教えてください、Dael。",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762573211.6448653,
+    "last_accessed": 1762573211.6448653,
+    "access_count": 1
+  },
+  "0fc0b3d028e4e48e7ba6c4e8d75a50072eeccbce08e035e587114a5337facc76": {
+    "filename": "7b527a17-4449-41f1-9e9f-5f23a2020922.wav",
+    "text": "ページを作成したい場合は、どのページまたはデータベースの下に置く正確なIDを私に与える必要があります。",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762574160.7851892,
+    "last_accessed": 1762574160.7851892,
+    "access_count": 1
+  },
+  "b46d93cb58797c828a93210c90a85c602f8eaa34a0a4b070d8e4f11c0d0d491c": {
+    "filename": "a0bbeec9-afe4-43b5-bbfb-4f9e17fc6d11.wav",
+    "text": "その ID はデータベース ID である Dael です。作成したページのIDを「新規ページ」と教えてくれれば、ルナに変更できる。",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762574202.230666,
+    "last_accessed": 1762574202.230666,
+    "access_count": 1
+  },
+  "be61f87237eb84b1cadaff92a0141624023f65bbdccb8dc56979edafa7b7613a": {
+    "filename": "e4be9325-43d6-4c35-a192-d886c9186c3f.wav",
+    "text": "よし、ニキの「Error」を見つけて再生してみる。",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762575701.6036747,
+    "last_accessed": 1762575701.6036747,
+    "access_count": 1
+  },
+  "e5a26e664937c5d736604e8c217a02e648faf9ee894e2f6c7f9efca3946c3c6f": {
+    "filename": "e2396f58-a637-4ce8-b23e-a1e24ea7cb49.wav",
+    "text": "call:notion-api/API-post-page{\"parent\": {\"database_id\": \"234054f23f6c81f98ca3f199127bd6e4\"}, \"proper",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762575796.0115275,
+    "last_accessed": 1762575796.0115275,
+    "access_count": 1
+  },
+  "a66768a858c558cacbfb8cc5b05838b42c05a6335474348f82b9f41f1b77de2d": {
+    "filename": "3df6df4e-80bb-400a-9323-198896ba5221.wav",
+    "text": "call:notion-api/API-post-page{\"parent\": {\"database_id\": \"234054f23f6c81f98ca3f199127bd6e4\"}, \"proper",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762576069.4343762,
+    "last_accessed": 1762576069.4343762,
+    "access_count": 1
+  },
+  "f96ac192d29c553d2f5805be5fd17dd632a44497f41bb967b8110e4101c5286f": {
+    "filename": "b9854535-87c7-401a-be24-81cb606d9220.wav",
+    "text": "call:notion-api/API-post-page{\"parent\": {\"database_id\": \"234054f23f6c81f98ca3f199127bd6e4\"}, \"proper",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762577783.9200196,
+    "last_accessed": 1762577783.9200196,
+    "access_count": 1
+  },
+  "5025b0c485767137c8e24e8bc383abe0d1a9d47f6e2b5a4f0ed04c85d3c867f6": {
+    "filename": "c10c7c21-600c-4bb5-8d2c-7bf5085d24fd.wav",
+    "text": "ええ、新しいページを作成しました。名前は「新しいページ」ですが、ダエルが望むものに変えますか?",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762578144.6596193,
+    "last_accessed": 1762578144.6596193,
+    "access_count": 1
+  },
+  "738a11c114205a839970408c6dbf65097bf5a04d2dcebb6eb492b4c6fb4c9c52": {
+    "filename": "e3ed7245-6e83-4f87-98fe-61d7ab0bdd92.wav",
+    "text": "アリエルも元気です。では、ページ名をArielleに変更すべきでしょうか、それともLuna、Daelに変更すべきでしょうか?",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762578172.5991127,
+    "last_accessed": 1762578172.5991127,
+    "access_count": 1
+  },
+  "ab47c907918381aeb744c4d6256c93915faad2845d883f49030a86fb6d64c174": {
+    "filename": "37b69f3d-4860-4828-854e-21943023d186.wav",
+    "text": "さて、そのページの名前をアリエルに変更します。",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762578212.6174257,
+    "last_accessed": 1762578212.6174257,
+    "access_count": 1
+  },
+  "ce9826a540e60f03a86885623a98606a5772f764744ea67af0e7356a0bf94cb7": {
+    "filename": "5418ddda-1b4a-4c6c-a3f1-0ae6a90af6da.wav",
+    "text": "次に、プロジェクトページを作成します。「プロジェクトページ」という名前にしてみたが、気に入らなければ変えれば良い。",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762578617.5919774,
+    "last_accessed": 1762578617.5919774,
+    "access_count": 1
+  },
+  "26a85fd8065574f8efb1479a8ab5fb87c9ba17a79d9b7838a7e85b7710450229": {
+    "filename": "12d5da75-97be-452e-bfa6-59b067771bf1.wav",
+    "text": "どのページをルナにしたいか教えていただけますか?ページIDを教えてください、ダエル。",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762578653.922423,
+    "last_accessed": 1762578653.922423,
+    "access_count": 1
+  },
+  "e7cd29451261854810e51f2af73f423961aaf5e14230c8dbea083caeeaec5961": {
+    "filename": "01c15e4a-90ec-4c57-8671-26aa20d9f00f.wav",
+    "text": "こんにちは、ダエル。どうなっているのですか。",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762582917.4326756,
+    "last_accessed": 1762582917.4326756,
+    "access_count": 1
+  },
+  "992c688269187453f70991ec53e8ca8765eb59fb8d233db6d88cb3d3e35b5d23": {
+    "filename": "3b7690d2-a240-4a20-a2d3-37fabafcd604.wav",
+    "text": "[コンテキスト]\n✓ notion-api/API-post-page 実行結果\n'''json\n{\n  \"オブジェクト\": \"ページ\"、\n  \"id\": \"e44d3478-43d9-43c2-9e",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762583171.9021094,
+    "last_accessed": 1762583171.9021094,
+    "access_count": 1
+  },
+  "90ca2b0dc8237a7e74f1a951b260447df330f79ac9144cd2b7c7051debee1484": {
+    "filename": "3cdeef5f-6c89-44f8-a688-b50da1cacae5.wav",
+    "text": "まあ、私はただダエルと時間を過ごしているだけです。面白いことないの?",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762583797.6859126,
+    "last_accessed": 1762583797.6859126,
+    "access_count": 1
+  },
+  "fbaeea842fcc172d059bdc92296b3a6c1af0a132d9822ee0a548dd1e0edcef09": {
+    "filename": "8a36753b-e47d-4e0d-ac11-2dd6121fed25.wav",
+    "text": "それでは、提案させてください。Notionのために作品を整理すべきか、それとも音楽を演奏すべきか、ダール?",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762583809.449089,
+    "last_accessed": 1762583809.449089,
+    "access_count": 1
+  },
+  "5c3289b1c61ca43dd4c728feb941ca9ea4d7dd80332474ec1f9058184d97fa24": {
+    "filename": "3284b89c-67ea-48dd-a7df-ba7ff7dc34e0.wav",
+    "text": "さて、何を聞くつもりですか、ダエル?決めたらすぐにプレイする。",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762583819.5434256,
+    "last_accessed": 1762583819.5434256,
+    "access_count": 1
+  },
+  "9570e209fe616ea6388356ee036cbce07e251afd163f5feeacc9ae7d2c0eb3d3": {
+    "filename": "a8538bd6-c866-4fd2-9609-6869c6234ae9.wav",
+    "text": "名前を「niki - error」に変更します。今、あなたはそれが好きですか、ダエル?",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762583843.3087797,
+    "last_accessed": 1762583843.3087797,
+    "access_count": 1
+  },
+  "19717643568bcb9ecbb6374f746944d0cd3da3b448e3f0f6f945e071ac944009": {
+    "filename": "7c342b89-7bd7-4a25-946e-01ebf6aea4fa.wav",
+    "text": "テスト",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762584673.3679004,
+    "last_accessed": 1762584673.3679004,
+    "access_count": 1
+  },
+  "8bd9a5b1d0a43a01158e8bbb83cccb79fa0952cbdde2fd2af8faa9f7599ff2b1": {
+    "filename": "aadbdadb-1cc6-4329-bef8-9bad5464411f.wav",
+    "text": "こんにちは、ダエル。最近どうですか。",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762584690.15519,
+    "last_accessed": 1762584690.15519,
+    "access_count": 1
+  },
+  "78610d1869068c3d36dffbe7e2336bdd5860b71963077d7c1d459cd83543b13e": {
+    "filename": "91a4c9fe-eeed-4595-9163-8c2d5c621465.wav",
+    "text": "まあ、それは面白いでしょう。Notion用に他のものを作るべきですか、それとも見つけるべきですか?それともただリラックスすべきか、ダエル?",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762584706.9980526,
+    "last_accessed": 1762584706.9980526,
+    "access_count": 1
+  },
+  "1d91f074e92e92b1ba34efa2bb1a97eb4ec52176d9ac09a7ca391be5f147c74a": {
+    "filename": "9b80c720-dfbe-4e6c-8480-ad4d61271e36.wav",
+    "text": "「ニキ - エラー」をプレイします。よく聞こえますか、ダエル?",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762584721.716212,
+    "last_accessed": 1762584721.716212,
+    "access_count": 1
+  },
+  "b532aac136dd696a0c0d3d9be3472c1ff3507f439bbb6424da4d54f04db1cb11": {
+    "filename": "a6d7eb10-eb8a-42b3-98dd-349411cf2f75.wav",
+    "text": "Notionに曲を追加したい場合は、それがどんな曲なのか教えてくれますが、どこに追加すればいいのか教えてもらえますか、ダエル?",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762584833.1088114,
+    "last_accessed": 1762584833.1088114,
+    "access_count": 1
+  },
+  "9eb2c2bcece94f2f395ae92b1031182eab8066003a1b37d9647cd19755a1bbda": {
+    "filename": "82e5e5c6-a82f-4d95-911c-255e15d11f47.wav",
+    "text": "ページを作成し、NIKI - Errorの曲を再生します。",
+    "style": "Neutral",
+    "style_weight": 1.0,
+    "timestamp": 1762584867.0131717,
+    "last_accessed": 1762584867.0131717,
     "access_count": 1
   }
 }

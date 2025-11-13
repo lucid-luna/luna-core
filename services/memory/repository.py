@@ -30,8 +30,7 @@ class MemoryRepository:
             db_manager: 데이터베이스 관리자
         """
         self.db = db_manager
-    
-    # ==================== Conversation CRUD ====================
+
     
     def create_conversation(self, conv: ConversationCreate) -> ConversationResponse:
         """
@@ -49,7 +48,7 @@ class MemoryRepository:
             cursor.execute("""
                 INSERT INTO conversations 
                 (user_id, session_id, user_message, assistant_message, 
-                 emotion, intent, processing_time, cached, metadata)
+                emotion, intent, processing_time, cached, metadata)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 conv.user_id,
@@ -136,12 +135,10 @@ class MemoryRepository:
             Tuple[List[ConversationResponse], int]: (검색 결과, 전체 개수)
         """
         with self.db.get_cursor() as cursor:
-            # 기본 쿼리
             query = "SELECT * FROM conversations WHERE 1=1"
             count_query = "SELECT COUNT(*) as count FROM conversations WHERE 1=1"
             params = []
             
-            # 조건 추가
             if search.user_id:
                 query += " AND user_id = ?"
                 count_query += " AND user_id = ?"
@@ -172,7 +169,6 @@ class MemoryRepository:
                 count_query += " AND timestamp <= ?"
                 params.append(search.date_to.isoformat())
             
-            # 키워드 검색 (FTS 사용)
             if search.keyword:
                 query = """
                     SELECT c.* FROM conversations c
@@ -184,14 +180,11 @@ class MemoryRepository:
                     JOIN conversations_fts fts ON c.id = fts.rowid
                     WHERE fts MATCH ?
                 """
-                # FTS 쿼리로 파라미터 재구성
                 params = [search.keyword] + params[:-2] if len(params) > 2 else [search.keyword]
             
-            # 전체 개수 조회
             cursor.execute(count_query, params)
             total_count = cursor.fetchone()['count']
             
-            # 정렬 및 페이지네이션
             query += " ORDER BY timestamp DESC LIMIT ? OFFSET ?"
             params.extend([search.limit, search.offset])
             
@@ -250,9 +243,7 @@ class MemoryRepository:
             
             cursor.execute(query, params)
             return cursor.rowcount
-    
-    # ==================== Summary CRUD ====================
-    
+        
     def create_summary(self, summary: SummaryCreate) -> SummaryResponse:
         """
         요약 생성
@@ -267,7 +258,7 @@ class MemoryRepository:
             cursor.execute("""
                 INSERT INTO summaries 
                 (user_id, session_id, content, summarized_turns, 
-                 start_conversation_id, end_conversation_id)
+                start_conversation_id, end_conversation_id)
                 VALUES (?, ?, ?, ?, ?, ?)
             """, (
                 summary.user_id,
@@ -369,9 +360,7 @@ class MemoryRepository:
         with self.db.get_cursor() as cursor:
             cursor.execute("DELETE FROM summaries WHERE id = ?", (summary_id,))
             return cursor.rowcount > 0
-    
-    # ==================== 통계 ====================
-    
+        
     def get_stats(
         self,
         user_id: Optional[str] = None,
@@ -388,7 +377,6 @@ class MemoryRepository:
             MemoryStats: 통계 데이터
         """
         with self.db.get_cursor() as cursor:
-            # 기본 쿼리 조건
             where_clause = "WHERE 1=1"
             params = []
             
@@ -416,7 +404,6 @@ class MemoryRepository:
             cursor.execute("SELECT COUNT(DISTINCT session_id) as count FROM conversations")
             unique_sessions = cursor.fetchone()['count']
             
-            # 첫/마지막 대화
             cursor.execute(f"""
                 SELECT MIN(timestamp) as first, MAX(timestamp) as last 
                 FROM conversations {where_clause}
@@ -481,11 +468,8 @@ class MemoryRepository:
                 cache_hit_rate=cache_hit_rate,
                 conversations_by_date=conversations_by_date
             )
-    
-    # ==================== Helper Methods ====================
-    
+        
     def _row_to_conversation(self, row) -> ConversationResponse:
-        """Row를 ConversationResponse로 변환"""
         metadata = json.loads(row['metadata']) if row['metadata'] else None
         
         return ConversationResponse(
@@ -504,7 +488,6 @@ class MemoryRepository:
         )
     
     def _row_to_summary(self, row) -> SummaryResponse:
-        """Row를 SummaryResponse로 변환"""
         return SummaryResponse(
             id=row['id'],
             user_id=row['user_id'],

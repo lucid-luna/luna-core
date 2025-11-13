@@ -97,7 +97,7 @@ class MemoryStats(BaseModel):
 
 
 class LLMContext(BaseModel):
-    """LLM 컨텍스트 모델 (OpenAI 형식)"""
+    """LLM 컨텍스트 모델"""
     role: str  # "system", "user", "assistant"
     content: str
 

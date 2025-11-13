@@ -212,3 +212,5 @@ bert
 slm
 
 .spotify_cache
+cache/response_cache.json
+cache/tts/metadata.json

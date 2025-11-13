@@ -40,14 +40,12 @@ class DatabaseManager:
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         
-        # 연결 풀 (스레드별 연결)
         self._local = threading.local()
         
-        # 스키마 초기화
         self._init_schema()
         self._initialized = True
         
-        print(f"[DatabaseManager] SQLite 초기화 완료: {self.db_path}")
+        print(f"[L.U.N.A. DatabaseManager] SQLite 초기화 완료: {self.db_path}")
     
     def get_connection(self) -> sqlite3.Connection:
         """
@@ -91,7 +89,6 @@ class DatabaseManager:
     def _init_schema(self):
         """데이터베이스 스키마 초기화"""
         with self.get_cursor() as cursor:
-            # conversations 테이블
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS conversations (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -109,7 +106,6 @@ class DatabaseManager:
                 )
             """)
             
-            # summaries 테이블
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS summaries (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -126,7 +122,6 @@ class DatabaseManager:
                 )
             """)
             
-            # 인덱스 생성
             cursor.execute("""
                 CREATE INDEX IF NOT EXISTS idx_conversations_user_session 
                 ON conversations(user_id, session_id, timestamp DESC)
@@ -152,7 +147,6 @@ class DatabaseManager:
                 ON summaries(user_id, session_id, timestamp DESC)
             """)
             
-            # FTS (Full-Text Search) 테이블 생성 (검색 최적화)
             cursor.execute("""
                 CREATE VIRTUAL TABLE IF NOT EXISTS conversations_fts 
                 USING fts5(
@@ -163,7 +157,6 @@ class DatabaseManager:
                 )
             """)
             
-            # FTS 트리거 설정 (자동 인덱싱)
             cursor.execute("""
                 CREATE TRIGGER IF NOT EXISTS conversations_fts_insert 
                 AFTER INSERT ON conversations 
@@ -198,7 +191,7 @@ class DatabaseManager:
             self._local.connection = None
     
     def vacuum(self):
-        """데이터베이스 최적화 (공간 회수)"""
+        """데이터베이스 최적화"""
         with self.get_cursor() as cursor:
             cursor.execute("VACUUM")
         print("[DatabaseManager] 데이터베이스 최적화 완료")
@@ -211,10 +204,8 @@ class DatabaseManager:
             dict: DB 정보 (크기, 테이블 수 등)
         """
         with self.get_cursor() as cursor:
-            # 파일 크기
             file_size = self.db_path.stat().st_size if self.db_path.exists() else 0
             
-            # 테이블별 레코드 수
             cursor.execute("SELECT COUNT(*) as count FROM conversations")
             conversations_count = cursor.fetchone()['count']
             
@@ -229,10 +220,7 @@ class DatabaseManager:
                 "summaries_count": summaries_count
             }
 
-
-# 전역 인스턴스
 _db_manager: Optional[DatabaseManager] = None
-
 
 def get_db_manager(db_path: str = "./memory/luna.db") -> DatabaseManager:
     """

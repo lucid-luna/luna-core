@@ -14,14 +14,17 @@ L.U.N.A. Core Backend Entry Point
 실행 예시:
     uvicorn main:app --host 0.0.0.0 --port 8000
 """
-
-from typing import Any
+from typing import Any, Optional, List
 
 import logging
+import json
 import yaml
+import urllib.request
+import tempfile
+import shutil
 from pathlib import Path
-from fastapi import FastAPI, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
-from fastapi.concurrency import asynccontextmanager
+from fastapi import FastAPI, HTTPException, UploadFile, WebSocket, WebSocketDisconnect, Body
+from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.params import File
@@ -35,11 +38,14 @@ from services.vision import VisionService
 from services.tts import TTSService
 from services.translator import TranslatorService
 from services.llm_manager import LLMManager
-from services.mcp.spotify import SpotifyService
 from services.mcp.tool_registry import ToolRegistry
 from services.memory import MemoryService
 from services.interaction import InteractionService, InteractResponse
 from utils.llm_config import create_llm_manager
+
+from services.mcp.internal_server import LunaMCPInternal
+from services.mcp.external_manager import ExternalMCPManager
+from services.mcp.tool_manager import MCPToolManager
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("LUNA_API")
@@ -55,107 +61,223 @@ llm_service = None
 memory_service = None
 interaction_service = None
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """서버 시작 시 모든 서비스 초기화 및 웜업"""
-    global asr_service, emotion_service, multi_intent_service, vision_service, tts_service, translator_service, llm_service, memory_service, interaction_service
-    
-    print("[L.U.N.A. Startup] 서비스 초기화 시작...")
+class AppLifespan:
+    def __init__(self):
+        # 필요하면 여기에 공유 상태를 넣을 수 있어요
+        pass
 
-    asr_service = ASRService()
-    emotion_service = EmotionService()
-    multi_intent_service = MultiIntentService()
-    vision_service = VisionService()
-    translator_service = TranslatorService()
-    
-    print("[L.U.N.A. Startup] LLM 서비스 초기화 중...")
-    llm_service, llm_target = create_llm_manager(config_path="config/models.yaml")
-    
-    if llm_service is None:
-        print("[L.U.N.A. Startup] 경고: LLM 서비스 초기화 실패. 기본 서버 모드로 대체합니다.")
-        llm_server_configs = {
-            "rp": {"url": "http://localhost:8080", "alias": "Luna"},
-            "translator": {"url": "http://localhost:8081", "alias": "Translator"}
+    async def __aenter__(self):
+        # ==== 여기에 기존 lifespan의 초기화 코드 전부 복사 ====
+        # (global asr_service, ... 선언 포함)
+        global asr_service, emotion_service, multi_intent_service, vision_service, tts_service, translator_service, llm_service, memory_service, interaction_service
+
+        print("[L.U.N.A. Startup] 서비스 초기화 시작...")
+
+        # --- 이하 기존 초기화 코드 그대로 ---
+        asr_service = ASRService()
+        emotion_service = EmotionService()
+        multi_intent_service = MultiIntentService()
+        vision_service = VisionService()
+        translator_service = TranslatorService()
+
+        print("[L.U.N.A. Startup] LLM 서비스 초기화 중...")
+        llm, llm_target = create_llm_manager(config_path="config/models.yaml")
+        if llm is None:
+            print("[L.U.N.A. Startup] 경고: LLM 서비스 초기화 실패. 기본 서버 모드로 대체합니다.")
+            from services.llm import LLMService
+            llm = LLMService(server_configs={
+                "rp": {"url": "http://localhost:8080", "alias": "Luna"},
+                "translator": {"url": "http://localhost:8081", "alias": "Translator"}
+            })
+            llm_target = "rp"
+        self.llm_service = llm
+        llm_service = self.llm_service
+
+        print(f"[L.U.N.A. Startup] LLM 모드: {self.llm_service.get_mode()}, 타겟: {llm_target}")
+
+        print("[L.U.N.A. Startup] 메모리 서비스 초기화 중...")
+        from pathlib import Path
+        import yaml
+        config_path = Path("config/models.yaml")
+        memory_config = {
+            "max_entries": 50,
+            "max_context_turns": 6,
+            "max_context_tokens": 1500,
+            "summary_threshold": 20,
+            "enable_auto_summary": True
         }
-        from services.llm import LLMService
-        llm_service = LLMService(server_configs=llm_server_configs)
-        llm_target = "rp"
-    
-    print(f"[L.U.N.A. Startup] LLM 모드: {llm_service.get_mode()}, 타겟: {llm_target}")
-    
-    print("[L.U.N.A. Startup] 메모리 서비스 초기화 중...")
-    
-    # 설정 파일에서 메모리 설정 로드
-    config_path = Path("config/models.yaml")
-    memory_config = {
-        "max_entries": 50,
-        "max_context_turns": 6,
-        "max_context_tokens": 1500,
-        "summary_threshold": 20,
-        "enable_auto_summary": True
-    }
-    
-    if config_path.exists():
-        try:
-            with open(config_path, 'r', encoding='utf-8') as f:
-                config = yaml.safe_load(f)
-                if config and "memory" in config:
-                    memory_config.update(config["memory"])
-                    print(f"[L.U.N.A. Startup] 메모리 설정 로드 완료")
-        except Exception as e:
-            print(f"[L.U.N.A. Startup] 메모리 설정 로드 실패 (기본값 사용): {e}")
-    
-    memory_service = MemoryService(
-        memory_dir="./memory",
-        max_entries=memory_config["max_entries"],
-        max_context_turns=memory_config["max_context_turns"],
-        max_context_tokens=memory_config.get("max_context_tokens", 1500),
-        summary_threshold=memory_config["summary_threshold"],
-        enable_auto_summary=memory_config["enable_auto_summary"],
-        llm_service=llm_service  # LLM 서비스 전달
-    )
-    
-    # 메모리 통계 조회
-    try:
-        stats = memory_service.get_memory_stats()
-        print(f"[L.U.N.A. Startup] 메모리 서비스 초기화 완료 (저장된 대화: {stats['conversations']}개, 요약: {stats['summaries']}개)")
-    except Exception as e:
-        print(f"[L.U.N.A. Startup] 메모리 서비스 초기화 완료 (통계 조회 실패: {e})")
-    
-    print("[L.U.N.A. Startup] TTS 서비스 초기화 중...")
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    tts_service = TTSService(device=device)
-    
-    print("[L.U.N.A. Startup] TTS 웜업 시작...")
-    try:
-        warmup_result = tts_service.synthesize(
-            text="テスト",
-            style="Neutral",
-            style_weight=1.0
+        if config_path.exists():
+            try:
+                with open(config_path, 'r', encoding='utf-8') as f:
+                    config = yaml.safe_load(f)
+                    if config and "memory" in config:
+                        memory_config.update(config["memory"])
+                        print(f"[L.U.N.A. Startup] 메모리 설정 로드 완료")
+            except Exception as e:
+                print(f"[L.U.N.A. Startup] 메모리 설정 로드 실패 (기본값 사용): {e}")
+
+        memory_service = MemoryService(
+            memory_dir="./memory",
+            max_entries=memory_config["max_entries"],
+            max_context_turns=memory_config["max_context_turns"],
+            max_context_tokens=memory_config.get("max_context_tokens", 1500),
+            summary_threshold=memory_config["summary_threshold"],
+            enable_auto_summary=memory_config["enable_auto_summary"],
+            llm_service=llm_service
         )
-        print("[L.U.N.A. Startup] TTS 웜업 완료!")
-    except Exception as e:
-        print(f"[L.U.N.A. Startup] TTS 웜업 실패: {e}")
+        try:
+            stats = memory_service.get_memory_stats()
+            print(f"[L.U.N.A. Startup] 메모리 서비스 초기화 완료 (저장된 대화: {stats['conversations']}개, 요약: {stats['summaries']}개)")
+        except Exception as e:
+            print(f"[L.U.N.A. Startup] 메모리 서비스 초기화 완료 (통계 조회 실패: {e})")
+
+        print("[L.U.N.A. Startup] TTS 서비스 초기화 중...")
+        import torch
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        tts_service = TTSService(device=device)
+
+        print("[L.U.N.A. Startup] TTS 웜업 시작...")
+        try:
+            _ = tts_service.synthesize(text="テスト", style="Neutral", style_weight=1.0)
+            print("[L.U.N.A. Startup] TTS 웜업 완료!")
+        except Exception as e:
+            print(f"[L.U.N.A. Startup] TTS 웜업 실패: {e}")
+
+        tool_registry = ToolRegistry()
+        interaction_service = InteractionService(
+            emotion_service=emotion_service,
+            multi_intent_service=multi_intent_service,
+            translator_service=translator_service,
+            llm_service=llm_service,
+            tts_service=tts_service,
+            tool_registry=tool_registry,
+            memory_service=memory_service,
+            mcp_tool_manager=None,  # 나중에 설정됨
+            llm_target=llm_target,
+            logger=logger
+        )
+        self.interaction_service = interaction_service
+
+        logger.info("[L.U.N.A. Startup] 모든 서비스 초기화 완료!")
+        print("[L.U.N.A. Startup] 모든 서비스 초기화 완료!")
+
+        # ===== 플러그인 매니저 초기화 (기존 코드 그대로) =====
+        import os, sys, json
+        PLUGIN_ROOT = Path(os.environ.get("LUNA_PLUGIN_ROOT", Path(__file__).resolve().parent / ".." / "luna-plugin")).resolve()
+        if str(PLUGIN_ROOT) not in sys.path:
+            sys.path.insert(0, str(PLUGIN_ROOT))
+
+        PluginManager = None
+        try:
+            # luna-plugin의 PluginManager는 선택적입니다. 없으면 경고만 출력하고 계속 진행합니다.
+            from sdk.manager import PluginManager  # type: ignore
+        except Exception as e:
+            print(f"[플러그인] 매니저 임포트 실패(sdk.manager): {e}")
+            print(f"[플러그인] sys.path 일부: {sys.path[:5]}")
+            print("[플러그인] luna-plugin의 PluginManager가 없거나 경로가 잘못되었습니다. 플러그인 로딩 단계를 건너뜁니다.")
+
+        plugin_cfg_primary = PLUGIN_ROOT / "config" / "config.json"
+        plugin_cfg_fallback = PLUGIN_ROOT / "config" / "config_example.json"
+        plugins_path = PLUGIN_ROOT / "plugins"
+
+        plugin_config = {}
+        if plugin_cfg_primary.exists():
+            cfg_path = plugin_cfg_primary
+        elif plugin_cfg_fallback.exists():
+            cfg_path = plugin_cfg_fallback
+        else:
+            cfg_path = None
+
+        if cfg_path:
+            try:
+                with open(cfg_path, "r", encoding="utf-8") as f:
+                    plugin_config = json.load(f)
+                print(f"[플러그인] 설정 로드: {cfg_path}")
+            except Exception as e:
+                print(f"[플러그인] 설정 로드 실패({cfg_path.name}): {e} → 빈 설정으로 진행")
+
+        # PluginManager가 존재하는 경우에만 플러그인 탐색/로딩을 시도합니다.
+        if PluginManager is not None and plugins_path.exists():
+            try:
+                pm = PluginManager(str(plugins_path), plugin_config)
+                discovered = pm.discover_plugins()
+                wanted = plugin_config.get("plugins", discovered)
+
+                print(f"[플러그인] 탐색됨: {discovered}")
+                print(f"[플러그인] 로드 대상: {wanted}")
+
+                activated = []
+                for name in wanted:
+                    inst = pm.load_plugin(name)
+                    if inst:
+                        try:
+                            pm.enable_plugin(name)
+                            activated.append(name)
+                        except Exception as e:
+                            print(f"[플러그인 활성화 실패] {name}: {e}")
+                    else:
+                        print(f"[플러그인 로딩 실패] {name}: (plugins/{name}/{name}_plugin.py & __init__.py 확인)")
+                print(f"[플러그인] 활성화 완료: {activated}")
+            except Exception as e:
+                print(f"[플러그인] PluginManager 사용 중 오류: {e}")
+        else:
+            if not plugins_path.exists():
+                print("[플러그인] 플러그인 디렉터리 없음 또는 PluginManager 미존재. 플러그인 미적용.")
         
-    spotify_service = SpotifyService(logger=logger)
-    tool_registry = ToolRegistry(spotify_service=spotify_service)
-        
-    interaction_service = InteractionService(
-        emotion_service=emotion_service,
-        multi_intent_service=multi_intent_service,
-        translator_service=translator_service,
-        llm_service=llm_service,
-        tts_service=tts_service,
-        tool_registry=tool_registry,
-        memory_service=memory_service,
-        llm_target=llm_target,
-        logger=logger
-    )
+        try:
+            self.internal_mcp = LunaMCPInternal(
+                name="LUNA-MCP", version="0.1.0",
+                asr=asr_service, emotion=emotion_service, multi_intent=multi_intent_service,
+                vision=vision_service, tts=tts_service, translator=translator_service,
+                llm=llm_service, memory=memory_service, logger=logger
+            )
+            self.internal_mcp.mount_sse(app, "/mcp")
+            print("[MCP] 내부 MCP 서버(SSE) 마운트: /mcp")
+        except Exception as e:
+            print(f"[MCP] 내부 MCP 서버 마운트 실패: {e}")
+
+        try:
+            self.mcp_mgr = ExternalMCPManager(config_path="config/mcp_servers.json", logger=logger)
+            await self.mcp_mgr.start_enabled()
+            print("[MCP] 외부 MCP 서버(ENABLED=true) 시작 완료")
+            
+            # MCPToolManager 초기화 및 도구 동기화
+            self.tool_manager = MCPToolManager(self.mcp_mgr, tool_registry, logger=logger)
+            await self.tool_manager.initialize()
+            print("[MCP] MCP 도구 매니저 초기화 완료")
+            
+            # InteractionService에 MCPToolManager 설정
+            self.interaction_service.mcp_tool_manager = self.tool_manager
+            print("[MCP] InteractionService에 MCP 도구 매니저 연결 완료")
+            
+        except Exception as e:
+            print(f"[MCP] 외부 MCP 매니저 시작 실패: {e}")
+
+        # __aenter__는 반환값 없어도 됩니다.
+        return
+
+    async def __aexit__(self, exc_type, exc, tb):
+        try:
+            if hasattr(self, "tool_manager") and self.tool_manager:
+                print("[MCP] MCP 도구 매니저 정리 중...")
+        except Exception:
+            logger.exception("[MCP] 도구 매니저 정리 중 오류")
+            
+        try:
+            if hasattr(self, "mcp_mgr") and self.mcp_mgr:
+                await self.mcp_mgr.stop_all()
+                print("[MCP] 외부 MCP 서버 종료 완료")
+        except Exception:
+            logger.exception("[MCP] 종료 중 오류")
+            
+        logger.info("[L.U.N.A. Shutdown] 서버 종료 중...")
+        return False  # 예외 전파
     
-    logger.info("[L.U.N.A. Startup] 모든 서비스 초기화 완료!")
-    print("[L.U.N.A. Startup] 모든 서비스 초기화 완료!")
-    yield
-    logger.info("[L.U.N.A. Shutdown] 서버 종료 중...")
+_lifespan_ref: AppLifespan | None = None
+def lifespan(app: FastAPI):
+    global _lifespan_ref
+    _lifespan_ref = AppLifespan()
+    return _lifespan_ref
     
 # FastAPI 앱 초기화
 app = FastAPI(
@@ -219,7 +341,36 @@ class LLMResponse(BaseModel):
 # Interact 
 class InteractRequest(BaseModel):
     input: str
-    
+    use_tools: bool = False  # MCP 도구 사용 여부
+
+# ====================================================================
+# MCP Tool 관련 Request/Response 스키마
+# ====================================================================
+
+class MCPToolCallRequest(BaseModel):
+    """MCP 도구 호출 요청"""
+    server_id: str  # "echo", "spotify" 등
+    tool_name: str  # "ping", "play" 등
+    arguments: dict  # 도구별 인자
+
+class MCPToolCallResponse(BaseModel):
+    """MCP 도구 호출 응답"""
+    success: bool
+    result: dict | Any
+    error: str | None = None
+
+class MCPToolInfo(BaseModel):
+    """MCP 도구 정보"""
+    id: str  # "echo/ping"
+    name: str  # "echo/ping" (네임스페이스 포함)
+    description: str
+    inputSchema: dict
+
+class MCPToolListResponse(BaseModel):
+    """MCP 도구 목록 응답"""
+    tools: list[MCPToolInfo]
+    total: int
+
 # Health Check Endpoint
 @app.get("/health", tags=["Utility"])
 def health() -> dict[str, str]:
@@ -228,17 +379,298 @@ def health() -> dict[str, str]:
     """
     return {"server": "L.U.N.A.", "version": "1.3.0", "status": "healthy"}
 
-@app.get("/spotify/callback", tags=["Spotify"])
-def spotify_callback(code: str = None, error: str = None):
+# ====================================================================
+# Logs 엔드포인트
+# ====================================================================
+
+@app.get("/logs", tags=["Logs"])
+def get_logs(limit: int = 500) -> List[dict]:
     """
-    Spotify OAuth 콜백 엔드포인트
-    """
-    if error:
-        logger.error(f"[Spotify Callback] 인증 오류: {error}")
-        return {"status": "error", "message": f"스포티파이 인증 오류: {error}"}
+    최근 로그를 반환합니다.
     
-    logger.info(f"[Spotify Callback] 인증 코드 수신: {code}, 토큰 파일이 .spotify_cache에 저장됩니다.")
-    return {"status": "ok", "message": "스포티파이 인증이 완료되었습니다. 이제 도구를 사용할 수 있습니다."}
+    Args:
+        limit: 반환할 최근 로그 개수 (기본값: 500)
+    
+    Returns:
+        List[dict]: 로그 항목 목록
+    
+    Example:
+        GET /logs?limit=100
+    """
+    # TODO: 실제 로그 저장소에서 로그를 가져오세요
+    # 현재는 빈 리스트를 반환합니다
+    return []
+
+# ====================================================================
+# Settings 엔드포인트
+# ====================================================================
+
+class SettingsPayload(BaseModel):
+    """설정 정보"""
+    notifications: bool = True
+    language: str = "ko"
+    ttsSpeed: float = 1.0
+    volume: int = 70
+    experimentalFeatures: bool = False
+
+@app.get("/settings", tags=["Settings"], response_model=SettingsPayload)
+def get_settings() -> SettingsPayload:
+    """
+    현재 시스템 설정을 반환합니다.
+    
+    Returns:
+        SettingsPayload: 설정 정보
+    
+    Example:
+        GET /settings
+    """
+    # TODO: 실제 설정 저장소에서 설정을 가져오세요
+    # 현재는 기본값을 반환합니다
+    return SettingsPayload(
+        notifications=True,
+        language="ko",
+        ttsSpeed=1.0,
+        volume=70,
+        experimentalFeatures=False
+    )
+
+@app.put("/settings", tags=["Settings"], response_model=SettingsPayload)
+def update_settings(settings: SettingsPayload) -> SettingsPayload:
+    """
+    시스템 설정을 업데이트합니다.
+    
+    Args:
+        settings: 새로운 설정 정보
+    
+    Returns:
+        SettingsPayload: 업데이트된 설정
+    
+    Example:
+        PUT /settings
+        {
+            "notifications": true,
+            "language": "ko",
+            "ttsSpeed": 1.0,
+            "volume": 70,
+            "experimentalFeatures": false
+        }
+    """
+    # TODO: 실제 설정 저장소에 설정을 저장하세요
+    # 현재는 받은 설정을 그대로 반환합니다
+    logger.info(f"[Settings] 설정 업데이트: {settings}")
+    return settings
+
+# ====================================================================
+# LLM Cache 엔드포인트
+# ====================================================================
+
+class LLMCacheStats(BaseModel):
+    """LLM 캐시 통계"""
+    cache_size: int = 0
+    max_cache_size: int = 0
+    hits: int = 0
+    misses: int = 0
+    total_requests: int = 0
+    hit_rate: float = 0.0
+
+@app.get("/llm/cache/stats", tags=["LLM Cache"], response_model=LLMCacheStats)
+def get_llm_cache_stats() -> LLMCacheStats:
+    """
+    LLM 캐시 통계를 반환합니다.
+    
+    Returns:
+        LLMCacheStats: 캐시 통계
+    
+    Example:
+        GET /llm/cache/stats
+    """
+    # TODO: 실제 LLM 캐시 통계를 수집하세요
+    # 현재는 기본값을 반환합니다
+    return LLMCacheStats(
+        cache_size=0,
+        max_cache_size=0,
+        hits=0,
+        misses=0,
+        total_requests=0,
+        hit_rate=0.0
+    )
+
+# ====================================================================
+# Metrics 엔드포인트
+# ====================================================================
+
+class SystemMetrics(BaseModel):
+    """시스템 메트릭"""
+    cpu_percent: float = 0.0
+    memory_percent: float = 0.0
+    gpu_percent: float = 0.0
+    temperature: float = 0.0
+    uptime: int = 0
+    active_connections: int = 0
+    timestamp: Optional[str] = None
+
+class APIStats(BaseModel):
+    """API 통계"""
+    total_requests: int = 0
+    successful_requests: int = 0
+    failed_requests: int = 0
+    average_response_time: float = 0.0
+    requests_per_second: float = 0.0
+
+@app.get("/metrics/system", tags=["Metrics"], response_model=SystemMetrics)
+def get_system_metrics() -> SystemMetrics:
+    """
+    시스템 메트릭을 반환합니다.
+    
+    Returns:
+        SystemMetrics: CPU, 메모리, GPU, 온도, 가동 시간, 활성 연결 수
+    
+    Example:
+        GET /metrics/system
+    """
+    import psutil
+    from datetime import datetime
+    
+    try:
+        cpu_percent = psutil.cpu_percent(interval=1)
+        memory_info = psutil.virtual_memory()
+        memory_percent = memory_info.percent
+    except:
+        cpu_percent = 0.0
+        memory_percent = 0.0
+    
+    return SystemMetrics(
+        cpu_percent=cpu_percent,
+        memory_percent=memory_percent,
+        gpu_percent=0.0,
+        temperature=0.0,
+        uptime=0,
+        active_connections=0,
+        timestamp=datetime.now().isoformat()
+    )
+
+@app.get("/metrics/api", tags=["Metrics"], response_model=APIStats)
+def get_api_stats() -> APIStats:
+    """
+    API 통계를 반환합니다.
+    
+    Returns:
+        APIStats: API 요청 통계
+    
+    Example:
+        GET /metrics/api
+    """
+    # TODO: 실제 API 통계를 수집하세요
+    # 현재는 기본값을 반환합니다
+    return APIStats(
+        total_requests=0,
+        successful_requests=0,
+        failed_requests=0,
+        average_response_time=0.0,
+        requests_per_second=0.0
+    )
+
+# ====================================================================
+# MCP Tool 엔드포인트
+# ====================================================================
+
+@app.get("/mcp/tools", tags=["MCP"])
+def get_mcp_tools() -> MCPToolListResponse:
+    """
+    모든 등록된 MCP 도구 목록을 반환합니다.
+    
+    Returns:
+        MCPToolListResponse: 도구 목록
+    
+    Example:
+        GET /mcp/tools
+        
+        Response:
+        {
+            "tools": [
+                {
+                    "id": "echo/ping",
+                    "name": "echo/ping",
+                    "description": "Echo back the text you send.",
+                    "inputSchema": {...}
+                }
+            ],
+            "total": 1
+        }
+    """
+    if not hasattr(_lifespan_ref, "tool_manager") or _lifespan_ref.tool_manager is None:
+        return MCPToolListResponse(tools=[], total=0)
+    
+    tool_list = _lifespan_ref.tool_manager.get_tool_list()
+    mcp_tools = [MCPToolInfo(**tool) for tool in tool_list]
+    
+    return MCPToolListResponse(
+        tools=mcp_tools,
+        total=len(mcp_tools)
+    )
+
+@app.post("/mcp/call", tags=["MCP"])
+async def call_mcp_tool(request: MCPToolCallRequest) -> MCPToolCallResponse:
+    """
+    MCP 도구를 호출합니다.
+    
+    Args:
+        request: MCPToolCallRequest
+            - server_id: MCP 서버 ID (e.g., "echo")
+            - tool_name: 도구 이름 (e.g., "ping")
+            - arguments: 도구에 전달할 인자 딕셔너리
+    
+    Returns:
+        MCPToolCallResponse: 호출 결과
+    
+    Example:
+        POST /mcp/call
+        
+        Request:
+        {
+            "server_id": "echo",
+            "tool_name": "ping",
+            "arguments": {
+                "text": "Hello, world!"
+            }
+        }
+        
+        Response:
+        {
+            "success": true,
+            "result": "Hello, world!",
+            "error": null
+        }
+    """
+    if not hasattr(_lifespan_ref, "tool_manager") or _lifespan_ref.tool_manager is None:
+        return MCPToolCallResponse(
+            success=False,
+            result=None,
+            error="MCP Tool Manager not initialized"
+        )
+    
+    try:
+        logger.info(f"[MCP] 도구 호출: {request.server_id}/{request.tool_name}")
+        
+        result = await _lifespan_ref.tool_manager.call_tool(
+            server_id=request.server_id,
+            tool_name=request.tool_name,
+            arguments=request.arguments
+        )
+        
+        return MCPToolCallResponse(
+            success=True,
+            result=result,
+            error=None
+        )
+        
+    except Exception as e:
+        logger.error(f"[MCP] 도구 호출 실패: {e}")
+        return MCPToolCallResponse(
+            success=False,
+            result=None,
+            error=str(e)
+        )
 
 # ASR WebSocket Endpoint
 @app.websocket("/ws/asr")
@@ -387,7 +819,7 @@ def interact(request: InteractRequest):
     if not interaction_service:
         raise HTTPException(status_code=503, detail="서비스가 아직 준비되지 않았습니다.")
     try:
-        return interaction_service.run(request.input)
+        return interaction_service.run(request.input, use_tools=request.use_tools)
     except Exception as e:
         logger.error(f"[Interact] 상호작용 중 심각한 오류 발생: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="상호작용 처리 중 서버 오류 발생")
@@ -406,7 +838,6 @@ async def interact_stream(request: InteractRequest):
         )
     
     try:
-        import json
         
         async def stream_generator():
             # 1. 감정 분석
@@ -462,13 +893,6 @@ async def interact_stream(request: InteractRequest):
         raise HTTPException(status_code=500, detail=f"스트리밍 처리 중 오류 발생: {str(e)}")
 
 # Memory Management Endpoints
-@app.get("/memory/stats", tags=["Memory"])
-def get_memory_stats():
-    """메모리 통계 정보를 반환합니다."""
-    if not memory_service:
-        raise HTTPException(status_code=503, detail="메모리 서비스가 준비되지 않았습니다.")
-    return memory_service.get_memory_stats()
-
 @app.get("/memory/recent", tags=["Memory"])
 def get_recent_memory(count: int = 10):
     """최근 대화 내역을 반환합니다."""
@@ -900,3 +1324,637 @@ def clear_memory(
         "deleted_conversations": deleted,
         "message": f"{deleted}개의 대화가 삭제되었습니다."
     }
+
+# MCP Endpoints
+@app.get("/mcp/external/servers", tags=["MCP"])
+def mcp_list_servers():
+    mgr = getattr(_lifespan_ref, "mcp_mgr", None)
+    if not mgr:
+        raise HTTPException(503, "MCP 매니저 준비 안됨")
+    return {"servers": [c.model_dump() for c in mgr.list_configs()]}
+
+@app.post("/mcp/external/reload", tags=["MCP"])
+async def mcp_reload_servers():
+    mcp_mgr = getattr(_lifespan_ref, "mcp_mgr", None)
+    tool_mgr = getattr(_lifespan_ref, "tool_manager", None)
+    
+    if not mcp_mgr:
+        raise HTTPException(503, "MCP 매니저 준비 안됨")
+    
+    # ExternalMCPManager 재로드
+    await mcp_mgr.reload_and_apply()
+    
+    # MCPToolManager 재로드 (도구 목록 재발견)
+    if tool_mgr:
+        await tool_mgr.reload()
+    
+    return {"status": "ok"}
+
+@app.get("/mcp/external/{server_id}/tools", tags=["MCP"])
+async def mcp_list_tools(server_id: str):
+    mgr = getattr(_lifespan_ref, "mcp_mgr", None)
+    if not mgr:
+        raise HTTPException(503, "MCP 매니저 준비 안됨")
+    tools = await mgr.list_tools(server_id)
+    return {"server": server_id, "tools": [t.model_dump() for t in tools]}
+
+@app.get("/mcp/external/{server_id}/resources", tags=["MCP"])
+async def mcp_list_resources(server_id: str):
+    mgr = getattr(_lifespan_ref, "mcp_mgr", None)
+    if not mgr:
+        raise HTTPException(503, "MCP 매니저 준비 안됨")
+    resources = await mgr.list_resources(server_id)
+    return {"server": server_id, "resources": [r.model_dump() for r in resources]}
+
+class ToolCallPayload(BaseModel):
+    name: str
+    arguments: dict = {}
+
+@app.post("/mcp/external/{server_id}/call", tags=["MCP"])
+async def mcp_call_tool(server_id: str, payload: ToolCallPayload):
+    mgr = getattr(_lifespan_ref, "mcp_mgr", None)
+    if not mgr:
+        raise HTTPException(503, "MCP 매니저 준비 안됨")
+    result = await mgr.call_tool(server_id, payload.name, payload.arguments)
+    # result는 MCP SDK의 통합 결과 모델. 그대로 반환(프론트에서 파싱)
+    return {"server": server_id, "result": result}
+
+
+# ====================================================================
+#  MCP 설정 관리 엔드포인트 (실시간 추가/제거/활성화)
+# ====================================================================
+
+class MCPServerConfig(BaseModel):
+    """MCP 서버 설정"""
+    id: str
+    transport: str = "stdio"
+    command: str = None  # 업데이트 시 선택적
+    args: list = []
+    cwd: str = None
+    enabled: bool = True
+    timeoutMs: int = 8000
+    env: dict = {}
+    
+    class Config:
+        extra = "allow"  # 추가 필드 허용
+
+@app.post("/mcp/external/config/add", tags=["MCP Config"])
+async def mcp_add_server(config: MCPServerConfig):
+    """
+    새로운 MCP 서버를 설정에 추가하고 활성화합니다.
+    
+    Example:
+    ```json
+    {
+        "id": "my-plugin",
+        "command": "python",
+        "args": ["server.py"],
+        "cwd": "/path/to/plugin",
+        "enabled": true,
+        "env": {}
+    }
+    ```
+    """
+    mgr = getattr(_lifespan_ref, "mcp_mgr", None)
+    if not mgr:
+        raise HTTPException(503, "MCP 매니저 준비 안됨")
+    
+    try:
+        # 설정 파일 로드
+        config_path = Path("config/mcp_servers.json")
+        
+        data = {}
+        if config_path.exists():
+            data = json.loads(config_path.read_text(encoding="utf-8"))
+        
+        mcp_servers = data.get("mcpServers", {})
+        
+        # 중복 체크
+        if config.id in mcp_servers:
+            raise HTTPException(400, f"서버 '{config.id}' 이미 존재")
+        
+        # 새 서버 추가
+        mcp_servers[config.id] = config.model_dump(exclude_unset=True)
+        data["mcpServers"] = mcp_servers
+        
+        # 설정 저장
+        config_path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+        
+        # 설정 재로드
+        await mgr.reload_and_apply()
+        
+        # 도구 목록 재로드
+        tool_mgr = getattr(_lifespan_ref, "tool_manager", None)
+        if tool_mgr:
+            await tool_mgr.reload()
+        
+        logger.info(f"[MCP Config] 서버 추가됨: {config.id}")
+        return {"status": "ok", "server": config.id}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[MCP Config] 서버 추가 실패: {e}")
+        raise HTTPException(500, str(e))
+
+
+@app.post("/mcp/external/config/remove", tags=["MCP Config"])
+async def mcp_remove_server(server_id: str):
+    """
+    MCP 서버를 설정에서 제거합니다.
+    
+    Example: POST /mcp/external/config/remove?server_id=my-plugin
+    """
+    mgr = getattr(_lifespan_ref, "mcp_mgr", None)
+    if not mgr:
+        raise HTTPException(503, "MCP 매니저 준비 안됨")
+    
+    try:
+        # 설정 파일 로드
+        config_path = Path("config/mcp_servers.json")
+        
+        if not config_path.exists():
+            raise HTTPException(404, "설정 파일 없음")
+        
+        data = json.loads(config_path.read_text(encoding="utf-8"))
+        mcp_servers = data.get("mcpServers", {})
+        
+        # 해당 서버 확인
+        if server_id not in mcp_servers:
+            raise HTTPException(404, f"서버 '{server_id}' 없음")
+        
+        # 제거
+        del mcp_servers[server_id]
+        data["mcpServers"] = mcp_servers
+        
+        # 설정 저장
+        config_path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+        
+        # 설정 재로드
+        await mgr.reload_and_apply()
+        
+        # 도구 목록 재로드
+        tool_mgr = getattr(_lifespan_ref, "tool_manager", None)
+        if tool_mgr:
+            await tool_mgr.reload()
+        
+        logger.info(f"[MCP Config] 서버 제거됨: {server_id}")
+        return {"status": "ok", "server": server_id}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[MCP Config] 서버 제거 실패: {e}")
+        raise HTTPException(500, str(e))
+
+
+@app.post("/mcp/external/config/update", tags=["MCP Config"])
+async def mcp_update_server(config: MCPServerConfig):
+    """
+    MCP 서버 설정을 업데이트합니다 (활성화/비활성화 포함).
+    
+    Example:
+    ```json
+    {
+        "id": "my-plugin",
+        "enabled": false
+    }
+    ```
+    """
+    mgr = getattr(_lifespan_ref, "mcp_mgr", None)
+    if not mgr:
+        raise HTTPException(503, "MCP 매니저 준비 안됨")
+    
+    try:
+        logger.info(f"[MCP Config] 업데이트 요청: id={config.id}, 원본={config.dict()}")
+        # 설정 파일 로드
+        config_path = Path("config/mcp_servers.json")
+        
+        if not config_path.exists():
+            raise HTTPException(404, "설정 파일 없음")
+        
+        data = json.loads(config_path.read_text(encoding="utf-8"))
+        mcp_servers = data.get("mcpServers", {})
+        
+        # 해당 서버 확인
+        if config.id not in mcp_servers:
+            raise HTTPException(404, f"서버 '{config.id}' 없음")
+        
+        # 기존 설정과 병합
+        existing = mcp_servers[config.id]
+        update_data = config.model_dump(exclude_unset=True)  # exclude_none 대신 exclude_unset 사용
+        logger.debug(f"[MCP Config] 업데이트 요청: id={config.id}, 변경 데이터={update_data}")
+        existing.update(update_data)
+        mcp_servers[config.id] = existing
+        logger.debug(f"[MCP Config] 업데이트 후: id={config.id}, enabled={existing.get('enabled')}")
+        data["mcpServers"] = mcp_servers
+        
+        # 설정 저장
+        config_path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+        
+        # 설정 재로드
+        await mgr.reload_and_apply()
+        
+        # 도구 목록 재로드
+        tool_mgr = getattr(_lifespan_ref, "tool_manager", None)
+        if tool_mgr:
+            await tool_mgr.reload()
+        
+        logger.info(f"[MCP Config] 서버 업데이트됨: {config.id}")
+        return {"status": "ok", "server": config.id}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[MCP Config] 서버 업데이트 실패: {e}")
+        raise HTTPException(500, str(e))
+
+
+# ====================================================================
+#  MCP URL 기반 로드 (웹에서 공유되는 MCP 파일 직접 로드)
+# ====================================================================
+
+class MCPURLConfig(BaseModel):
+    """URL 기반 MCP 서버 설정"""
+    id: str
+    url: str
+    namespace: str = None
+    enabled: bool = True
+    timeoutMs: int = 8000
+
+@app.post("/mcp/external/config/add-from-url", tags=["MCP Config"])
+async def mcp_add_server_from_url(config: MCPURLConfig):
+    """
+    웹에서 공유되는 MCP 파일을 URL로 직접 로드합니다.
+    
+    Example:
+    ```json
+    {
+        "id": "my-plugin",
+        "url": "https://raw.githubusercontent.com/user/repo/main/server.py",
+        "namespace": "my-plugin",
+        "enabled": true
+    }
+    ```
+    
+    지원하는 포맷:
+    - Python 파일 (.py) - FastMCP 기반
+    - npm 패키지 (package.json이 있는 경우)
+    """
+    mgr = getattr(_lifespan_ref, "mcp_mgr", None)
+    if not mgr:
+        raise HTTPException(503, "MCP 매니저 준비 안됨")
+    
+    try:
+        # URL 유효성 확인
+        if not config.url.startswith(("http://", "https://")):
+            raise HTTPException(400, "유효한 URL을 입력하세요 (http:// 또는 https://)")
+        
+        # 임시 디렉토리 생성
+        temp_dir = Path(tempfile.mkdtemp(prefix=f"mcp_{config.id}_"))
+        
+        logger.info(f"[MCP URL] 다운로드 시작: {config.url}")
+        
+        # URL에서 파일 다운로드
+        try:
+            urllib.request.urlretrieve(config.url, temp_dir / "server.py")
+        except Exception as e:
+            shutil.rmtree(temp_dir)
+            raise HTTPException(400, f"파일 다운로드 실패: {e}")
+        
+        # 설정 파일에 추가
+        config_path = Path("config/mcp_servers.json")
+        data = {}
+        if config_path.exists():
+            data = json.loads(config_path.read_text(encoding="utf-8"))
+        
+        servers = data.get("servers", [])
+        
+        # 중복 체크
+        if any(s["id"] == config.id for s in servers):
+            shutil.rmtree(temp_dir)
+            raise HTTPException(400, f"서버 '{config.id}' 이미 존재")
+        
+        # 새 서버 추가
+        new_server = {
+            "id": config.id,
+            "transport": "stdio",
+            "command": "python",
+            "args": ["server.py"],
+            "cwd": str(temp_dir),
+            "enabled": config.enabled,
+            "namespace": config.namespace or config.id,
+            "timeoutMs": config.timeoutMs,
+            "source": {
+                "type": "url",
+                "url": config.url,
+                "downloaded_at": str(Path(__file__).resolve().parent / "main.py")  # 타임스탬프 용도
+            }
+        }
+        
+        servers.append(new_server)
+        data["servers"] = servers
+        
+        # 설정 저장
+        config_path.write_text(json.dumps(data, indent=4, ensure_ascii=False), encoding="utf-8")
+        
+        # 설정 재로드
+        await mgr.reload_and_apply()
+        
+        # 도구 목록 재로드
+        tool_mgr = getattr(_lifespan_ref, "tool_manager", None)
+        if tool_mgr:
+            await tool_mgr.reload()
+        
+        logger.info(f"[MCP URL] 서버 추가됨: {config.id} (temp: {temp_dir})")
+        return {
+            "status": "ok",
+            "server": config.id,
+            "path": str(temp_dir),
+            "url": config.url
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[MCP URL] 서버 추가 실패: {e}")
+        raise HTTPException(500, str(e))
+
+
+class MCPConfigFileUpload(BaseModel):
+    """Claude 포맷 MCP 설정 파일"""
+    mcpServers: dict = {}
+
+@app.post("/mcp/external/config/import-claude-format", tags=["MCP Config"])
+async def mcp_import_claude_format(config_file: MCPConfigFileUpload):
+    """
+    Claude Desktop 포맷의 MCP 설정을 가져옵니다.
+    
+    Example:
+    ```json
+    {
+        "mcpServers": {
+            "google-maps": {
+                "command": "docker",
+                "args": ["run", "-i", "--rm", "-e", "GOOGLE_MAPS_API_KEY", "mcp/google-maps"],
+                "env": {
+                    "GOOGLE_MAPS_API_KEY": "your-key"
+                }
+            },
+            "my-python-tool": {
+                "command": "python",
+                "args": ["server.py"],
+                "cwd": "/path/to/server"
+            }
+        }
+    }
+    ```
+    """
+    mgr = getattr(_lifespan_ref, "mcp_mgr", None)
+    if not mgr:
+        raise HTTPException(503, "MCP 매니저 준비 안됨")
+    
+    try:
+        config_path = Path("config/mcp_servers.json")
+        data = {}
+        if config_path.exists():
+            data = json.loads(config_path.read_text(encoding="utf-8"))
+        
+        servers = data.get("servers", [])
+        added_count = 0
+        
+        # mcpServers의 각 서버를 변환
+        for server_id, server_config in config_file.mcpServers.items():
+            # 중복 체크
+            if any(s["id"] == server_id for s in servers):
+                logger.warning(f"[MCP Import] 서버 '{server_id}' 이미 존재, 스킵")
+                continue
+            
+            # Claude 포맷을 L.U.N.A 포맷으로 변환
+            new_server = {
+                "id": server_id,
+                "transport": "stdio",
+                "command": server_config.get("command"),
+                "args": server_config.get("args", []),
+                "cwd": server_config.get("cwd"),
+                "env": server_config.get("env", {}),
+                "enabled": server_config.get("enabled", True),
+                "namespace": server_config.get("namespace", server_id),
+                "timeoutMs": server_config.get("timeoutMs", 8000),
+                "source": {
+                    "type": "claude-format",
+                    "imported_at": Path(__file__).resolve().parent.name
+                }
+            }
+            
+            servers.append(new_server)
+            added_count += 1
+            logger.info(f"[MCP Import] 서버 추가됨: {server_id}")
+        
+        if added_count == 0:
+            return {"status": "ok", "added": 0, "message": "추가할 새 서버가 없습니다"}
+        
+        # 설정 저장
+        data["servers"] = servers
+        config_path.write_text(json.dumps(data, indent=4, ensure_ascii=False), encoding="utf-8")
+        
+        # 설정 재로드
+        await mgr.reload_and_apply()
+        
+        # 도구 목록 재로드
+        tool_mgr = getattr(_lifespan_ref, "tool_manager", None)
+        if tool_mgr:
+            await tool_mgr.reload()
+        
+        logger.info(f"[MCP Import] 총 {added_count}개 서버 추가됨")
+        return {
+            "status": "ok",
+            "added": added_count,
+            "servers": list(config_file.mcpServers.keys())
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[MCP Import] 설정 가져오기 실패: {e}")
+        raise HTTPException(500, str(e))
+
+
+# ====================================================================
+#  LLM + MCP 도구 연동
+# ====================================================================
+
+class LLMChatWithToolsRequest(BaseModel):
+    """LLM 채팅 (도구 지원) 요청"""
+    user_input: str
+    llm_provider: str = "gemini"  # "gemini", "claude", 등
+    system_prompt: Optional[str] = None
+    temperature: float = 0.7
+    max_tokens: int = 2048
+    use_tools: bool = True
+    tool_choice: str = "auto"  # "auto", "none", "required"
+
+class LLMToolUse(BaseModel):
+    """LLM이 호출한 도구"""
+    tool_id: str  # "echo/ping" 형식
+    server_id: str
+    tool_name: str
+    arguments: dict
+    result: Optional[Any] = None
+    error: Optional[str] = None
+
+class LLMChatWithToolsResponse(BaseModel):
+    """LLM 채팅 (도구 지원) 응답"""
+    success: bool
+    content: str  # 최종 응답
+    tool_calls: List[LLMToolUse] = []
+    usage: Optional[dict] = None
+
+@app.post("/llm/chat-with-tools", tags=["LLM + MCP"])
+async def llm_chat_with_tools(request: LLMChatWithToolsRequest) -> LLMChatWithToolsResponse:
+    """
+    LLM이 MCP 도구를 사용할 수 있는 채팅 엔드포인트입니다.
+    
+    LLM이 도구를 호출하면 자동으로 실행하고 결과를 다시 LLM에 전달합니다.
+    
+    Example:
+    ```json
+    {
+        "user_input": "echo/ping 도구를 사용해서 'Hello'를 전송해주고, 그 결과를 알려줘",
+        "llm_provider": "gemini",
+        "use_tools": true,
+        "tool_choice": "auto"
+    }
+    ```
+    """
+    llm_svc = getattr(_lifespan_ref, "llm_service", None)
+    tool_mgr = getattr(_lifespan_ref, "tool_manager", None)
+    
+    if not llm_svc:
+        raise HTTPException(503, "LLM 서비스 준비 안됨")
+    
+    if not tool_mgr or not request.use_tools:
+        # 도구 없이 일반 채팅
+        try:
+            response = llm_svc.generate(
+                target=request.llm_provider,
+                user_prompt=request.user_input,
+                system_prompt=request.system_prompt,
+                temperature=request.temperature,
+                max_tokens=request.max_tokens
+            )
+            
+            if isinstance(response, dict):
+                content = response.get("response", str(response))
+            else:
+                content = str(response)
+            
+            return LLMChatWithToolsResponse(
+                success=True,
+                content=content,
+                tool_calls=[]
+            )
+        except Exception as e:
+            logger.error(f"[LLM Chat] 생성 실패: {e}")
+            raise HTTPException(500, str(e))
+    
+    # 도구 사용 모드
+    try:
+        tool_list = tool_mgr.get_tool_list()
+        tools_schema = []
+        
+        for tool in tool_list:
+            tools_schema.append({
+                "name": tool["name"],
+                "description": tool["description"],
+                "input_schema": tool.get("inputSchema", {})
+            })
+        
+        system_prompt = request.system_prompt or """You are a helpful assistant with access to tools. 
+When the user asks you to use a tool, call it using the provided tool schema.
+Always use tool calls when appropriate to help the user."""
+        
+        # LLM에 도구 정보와 함께 요청
+        logger.info(f"[LLM Chat] 도구 사용 모드: {len(tools_schema)}개 도구 제공")
+        
+        # Gemini API의 경우 tool_choice 및 tools 파라미터 사용
+        # 현재는 간단히 프롬프트에 도구 정보를 포함
+        tool_info_str = "Available tools:\n"
+        for tool in tools_schema:
+            tool_info_str += f"- {tool['name']}: {tool['description']}\n"
+        
+        enhanced_prompt = f"{request.user_input}\n\n{tool_info_str}"
+        
+        response = llm_svc.generate(
+            target=request.llm_provider,
+            user_prompt=enhanced_prompt,
+            system_prompt=system_prompt,
+            temperature=request.temperature,
+            max_tokens=request.max_tokens
+        )
+        
+        if isinstance(response, dict):
+            content = response.get("response", str(response))
+        else:
+            content = str(response)
+        
+        # 응답에서 도구 호출 추출 및 실행
+        tool_calls = []
+        
+        # 간단한 도구 호출 패턴 인식 (예: "사용 도구: echo/ping with argument: 'test'")
+        # 더 정교한 파싱은 LLM 응답 형식에 따라 구현 필요
+        import re
+        tool_pattern = r"([\w-]+/[\w-]+)\s*\(?([^)]*)\)?"
+        matches = re.findall(tool_pattern, content)
+        
+        for match in matches:
+            tool_id = match[0]
+            args_str = match[1]
+            
+            # tool_id에서 server_id와 tool_name 추출
+            if "/" in tool_id:
+                server_id, tool_name = tool_id.split("/", 1)
+                
+                # 도구 실행
+                try:
+                    # 인자 파싱 (간단한 방식)
+                    arguments = {}
+                    if args_str:
+                        # JSON 형식 시도
+                        try:
+                            arguments = json.loads(args_str)
+                        except:
+                            # 간단한 key=value 파싱
+                            for pair in args_str.split(","):
+                                if "=" in pair:
+                                    k, v = pair.split("=", 1)
+                                    arguments[k.strip()] = v.strip().strip("'\"")
+                    
+                    result = await tool_mgr.call_tool(server_id, tool_name, arguments)
+                    
+                    tool_call = LLMToolUse(
+                        tool_id=tool_id,
+                        server_id=server_id,
+                        tool_name=tool_name,
+                        arguments=arguments,
+                        result=str(result)
+                    )
+                    tool_calls.append(tool_call)
+                    logger.info(f"[LLM Chat] 도구 호출 성공: {tool_id}")
+                except Exception as e:
+                    tool_call = LLMToolUse(
+                        tool_id=tool_id,
+                        server_id=server_id,
+                        tool_name=tool_name,
+                        arguments=arguments,
+                        error=str(e)
+                    )
+                    tool_calls.append(tool_call)
+                    logger.error(f"[LLM Chat] 도구 호출 실패: {tool_id} - {e}")
+        
+        return LLMChatWithToolsResponse(
+            success=True,
+            content=content,
+            tool_calls=tool_calls
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[LLM Chat] 도구 사용 모드 실패: {e}")
+        raise HTTPException(500, str(e))

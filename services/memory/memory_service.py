@@ -22,8 +22,6 @@ from .token_utils import estimate_tokens_for_messages, estimate_tokens_for_text
 class MemoryService:
     """
     대화 메모리 관리 서비스 (SQLite 기반)
-    
-    기존 파일 기반 API와 호환되도록 설계됨
     """
     
     def __init__(
@@ -54,7 +52,6 @@ class MemoryService:
         self.memory_dir = memory_dir
         self.max_entries = max_entries
         self.max_context_turns = max_context_turns
-        # Token budget for assembled LLM context. If set to None or 0, uses turns-based limit only.
         self.max_context_tokens = max_context_tokens
         self.summary_threshold = summary_threshold
         self.enable_auto_summary = enable_auto_summary
@@ -62,12 +59,11 @@ class MemoryService:
         self.user_id = user_id
         self.session_id = session_id
         
-        # DB 초기화
         db_path = f"{memory_dir}/luna.db"
         self.db_manager = get_db_manager(db_path)
         self.repository = MemoryRepository(self.db_manager)
         
-        print(f"[MemoryService] SQLite 기반 초기화 완료 (요약 임계값: {summary_threshold}턴, 자동 요약: {enable_auto_summary})")
+        print(f"[L.U.N.A. MemoryService] SQLite 기반 초기화 완료 (요약 임계값: {summary_threshold}턴, 자동 요약: {enable_auto_summary})")
     
     # ==================== 기존 API 호환 메서드 ====================
     
@@ -80,13 +76,11 @@ class MemoryService:
             assistant_response: 어시스턴트 응답
             metadata: 추가 메타데이터 (감정, 인텐트 등)
         """
-        # 메타데이터에서 정보 추출
         emotion = metadata.get("emotion") if metadata else None
         intent = metadata.get("intent") if metadata else None
         processing_time = metadata.get("processing_time") if metadata else None
         cached = metadata.get("cached", False) if metadata else False
         
-        # DB에 저장
         conv = ConversationCreate(
             user_id=self.user_id,
             session_id=self.session_id,
@@ -101,7 +95,6 @@ class MemoryService:
         
         self.repository.create_conversation(conv)
         
-        # 자동 요약 체크
         if self.enable_auto_summary and self.llm_service:
             self._check_and_summarize()
     
@@ -117,7 +110,6 @@ class MemoryService:
         """
         messages: List[Dict[str, str]] = []
 
-        # 최신 요약 가져오기
         summary = self.repository.get_latest_summary(self.user_id, self.session_id)
         if summary:
             messages.append({
@@ -125,7 +117,6 @@ class MemoryService:
                 "content": f"[이전 대화 요약]\n{summary.content}"
             })
 
-        # Fetch a reasonably large window (we'll trim by token budget)
         fetch_limit = max(self.max_context_turns * 4, 100)
         conversations = self.repository.get_conversations(
             user_id=self.user_id,
@@ -133,10 +124,8 @@ class MemoryService:
             limit=fetch_limit
         )
 
-        # 시간순 정렬 (오래된 것부터)
         conversations.reverse()
 
-        # If no token budget configured, fall back to turns-based behavior
         if not self.max_context_tokens or self.max_context_tokens <= 0:
             recent = conversations[-self.max_context_turns:]
             recent.reverse()
@@ -145,29 +134,21 @@ class MemoryService:
                 messages.append({"role": "assistant", "content": conv.assistant_message})
             return messages
 
-        # Build messages under token budget. Start with any existing messages (e.g., summary)
         current_tokens = estimate_tokens_for_messages(messages)
 
-        # We want to keep the chronological order, so iterate conversations oldest->newest
         for conv in conversations:
-            # Build the two messages we would add
             user_msg = {"role": "user", "content": conv.user_message}
             assistant_msg = {"role": "assistant", "content": conv.assistant_message}
 
-            # Estimate tokens if we add both messages
             add_tokens = estimate_tokens_for_messages([user_msg, assistant_msg])
 
-            # If adding these would exceed the budget, skip them. However, ensure we include at least the most recent turn.
             if current_tokens + add_tokens > self.max_context_tokens:
-                # Check if messages is empty (only possible if summary was too large) — then skip
-                # If we're close to the end (this is one of the most recent turns), consider forcing inclusion of the last turn
                 continue
 
             messages.append(user_msg)
             messages.append(assistant_msg)
             current_tokens += add_tokens
 
-        # If we ended up with no conversation messages (e.g., budget too small), ensure at least the most recent turn is present
         if len(messages) <= (1 if summary else 0):
             latest = self.repository.get_conversations(
                 user_id=self.user_id,
@@ -179,11 +160,8 @@ class MemoryService:
                 messages.append({"role": "user", "content": conv.user_message})
                 messages.append({"role": "assistant", "content": conv.assistant_message})
 
-        # Finally, if we have more turns than max_context_turns, trim older turns while preserving summary
-        # Count only user+assistant pairs
         pairs = (len(messages) - (1 if summary else 0)) // 2
         if pairs > self.max_context_turns:
-            # Keep the most recent max_context_turns pairs
             preserve_prefix = messages[: (1 if summary else 0)]
             recent_pairs = messages[-(self.max_context_turns * 2):]
             messages = preserve_prefix + recent_pairs
@@ -192,7 +170,7 @@ class MemoryService:
     
     def get_recent_summary(self, count: int = 5) -> str:
         """
-        최근 대화 요약 텍스트 반환 (기존 API 호환)
+        최근 대화 요약 텍스트 반환
         
         Args:
             count: 표시할 대화 수
@@ -209,7 +187,6 @@ class MemoryService:
         if not conversations:
             return "(대화 내역 없음)"
         
-        # 시간순 정렬
         conversations.reverse()
         
         summary_parts = []
@@ -226,7 +203,7 @@ class MemoryService:
             user_id=self.user_id,
             session_id=self.session_id
         )
-        print(f"[MemoryService] 메모리 삭제 완료 ({deleted}개)")
+        print(f"[L.U.N.A. MemoryService] 메모리 삭제 완료 ({deleted}개)")
     
     def get_memory_stats(self) -> Dict[str, Any]:
         """
@@ -256,7 +233,7 @@ class MemoryService:
         Returns:
             bool: 요약 성공 여부
         """
-        print("[MemoryService] 수동 요약 실행")
+        print("[L.U.N.A. MemoryService] 수동 요약 실행")
         return self._summarize_conversations()
     
     def get_summary(self) -> Optional[str]:
@@ -269,14 +246,12 @@ class MemoryService:
         summary = self.repository.get_latest_summary(self.user_id, self.session_id)
         return summary.content if summary else None
     
-    # ==================== 내부 메서드 (요약 로직) ====================
-    
     def _check_and_summarize(self):
         """대화 수 확인 후 자동 요약 실행"""
         stats = self.repository.get_stats(self.user_id, self.session_id)
         
         if stats.total_conversations >= self.summary_threshold:
-            print(f"[MemoryService] 대화 {stats.total_conversations}개 도달 → 자동 요약 실행")
+            print(f"[L.U.N.A. MemoryService] 대화 {stats.total_conversations}개 도달 → 자동 요약 실행")
             self._summarize_conversations()
     
     def _summarize_conversations(self) -> bool:
@@ -286,35 +261,29 @@ class MemoryService:
         Returns:
             bool: 요약 성공 여부
         """
-        # 모든 대화 가져오기
         all_conversations = self.repository.get_conversations(
             user_id=self.user_id,
             session_id=self.session_id,
-            limit=1000  # 충분히 큰 값
+            limit=1000
         )
         
-        # 시간순 정렬 (오래된 것부터)
         all_conversations.reverse()
         
         if len(all_conversations) <= self.max_context_turns:
-            print("[MemoryService] 대화가 충분하지 않아 요약을 건너뜁니다.")
+            print("[L.U.N.A. MemoryService] 대화가 충분하지 않아 요약을 건너뜁니다.")
             return False
         
-        # 최근 대화는 유지, 오래된 대화만 요약
         recent_conversations = all_conversations[-self.max_context_turns:]
         old_conversations = all_conversations[:-self.max_context_turns]
         
         if not old_conversations:
             return False
         
-        # 기존 요약 가져오기
         existing_summary = self.repository.get_latest_summary(self.user_id, self.session_id)
         
-        # 요약 생성
         new_summary_text = self._generate_summary(old_conversations, existing_summary)
         
         if new_summary_text:
-            # 요약 저장
             summary = SummaryCreate(
                 user_id=self.user_id,
                 session_id=self.session_id,
@@ -325,11 +294,7 @@ class MemoryService:
             )
             self.repository.create_summary(summary)
             
-            # 요약된 대화 삭제 (선택적)
-            # for conv in old_conversations:
-            #     self.repository.delete_conversation(conv.id)
-            
-            print(f"[MemoryService] 요약 완료 ({len(old_conversations)}턴 → 요약)")
+            print(f"[L.U.N.A. MemoryService] 요약 완료 ({len(old_conversations)}턴 → 요약)")
             return True
         
         return False
@@ -350,10 +315,9 @@ class MemoryService:
             str: 생성된 요약 텍스트
         """
         if not self.llm_service:
-            print("[MemoryService] LLM 서비스가 없어 요약을 생성할 수 없습니다.")
+            print("[L.U.N.A. MemoryService] LLM 서비스가 없어 요약을 생성할 수 없습니다.")
             return None
         
-        # 대화 내용 포맷팅
         conversation_text = []
         for conv in conversations:
             conversation_text.append(f"User: {conv.user_message}")
@@ -361,7 +325,6 @@ class MemoryService:
         
         conversation_str = "\n".join(conversation_text)
         
-        # 요약 프롬프트
         if existing_summary:
             prompt = f"""기존 요약:
 {existing_summary.content}
@@ -391,7 +354,6 @@ class MemoryService:
 간결하고 핵심적인 내용만 포함하여 3-5문장으로 작성해주세요."""
         
         try:
-            # LLM에 요약 요청
             target = list(self.llm_service.get_available_targets())[0]
             response = self.llm_service.generate(
                 target=target,
@@ -399,7 +361,6 @@ class MemoryService:
                 user_prompt=prompt
             )
             
-            # 응답 파싱
             if isinstance(response, dict) and "choices" in response:
                 summary_text = response["choices"][0]["message"]["content"]
                 return summary_text.strip()
@@ -409,8 +370,7 @@ class MemoryService:
         except Exception as e:
             print(f"[MemoryService] 요약 생성 중 오류: {e}")
             return None
-    
-    # ==================== 새로운 기능 (DB 기반) ====================
+
     
     def get_conversations(self, limit: int = 50, offset: int = 0) -> List[ConversationResponse]:
         """

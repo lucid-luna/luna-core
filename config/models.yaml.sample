@@ -1,108 +1,296 @@
 # config/models.yaml.sample
+# L.U.N.A. 시스템 설정 파일
+# 이 파일을 models.yaml로 복사하고 필요에 따라 수정하세요.
 
-name: "YourProjectName"
-version: "0.0.1"
-description: "Your model configuration description"
-author: "YourName"
+# ==================== 기본 정보 ====================
+name: "Luna"                                           # 시스템 이름
+version: "1.7.0"                                       # 설정 버전
+description: "L.U.N.A. AI Assistant Models Configuration"  # 설명
+author: "Dael"                                         # 작성자
 
-# ============================================
-# 메모리 및 요약 설정
-# ============================================
+# ==================== LLM (대언어모델) 설정 ====================
+llm:
+  # 실행 모드: "api" (클라우드) 또는 "server" (로컬)
+  # - "api": Google Gemini API 사용 (기본값, 권장)
+  # - "server": 로컬 서버 사용 (LM Studio 등)
+  mode: "api"
+  
+  # 로컬 서버 모드일 때의 서버 설정 (모드가 "server"일 때만 사용)
+  servers:
+    rp:
+      url: "http://localhost:8080"                   # 역할극(RP) 모델 서버 URL
+      alias: "Luna"                                   # 서버 별칭
+    translator:
+      url: "http://localhost:8081"                   # 번역 모델 서버 URL
+      alias: "Translator"                             # 서버 별칭
+  
+  # API 모드 설정
+  api:
+    gemini:
+      # 사용할 Gemini 모델
+      # 선택지: "gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-pro" 등
+      # 기본값: "gemini-2.5-flash" (가장 빠름, 비용 효율적)
+      model: "gemini-2.5-flash"
+
+# ==================== 메모리(대화 기록) 설정 ====================
 memory:
-  max_entries: 50              # 최대 저장 대화 수
-  max_context_turns: 6         # LLM에 전달할 최근 대화 턴 수
-  max_context_tokens: 1500     # LLM 컨텍스트 최대 토큰 수 (0이면 턴 기반만 사용)
-  summary_threshold: 20        # 자동 요약 실행 기준 (턴 수)
-  enable_auto_summary: true    # 자동 요약 활성화
-  summary_language: "korean"   # 요약 언어 (korean/english)
+  # 최대 저장 대화 수 (오래된 것부터 자동 삭제)
+  max_entries: 50
+  
+  # LLM에 제공할 최근 대화 턴 수
+  # (예: 6이면 최근 6번의 사용자-어시스턴트 쌍 = 12개 메시지)
+  max_context_turns: 6
+  
+  # 컨텍스트에 포함할 최대 토큰 수
+  # (너무 많으면 LLM 비용 증가, 너무 적으면 맥락 손실)
+  max_context_tokens: 1500
+  
+  # 자동 요약 시작 임계값 (대화 턴 수)
+  # (예: 20이면 대화가 20턴을 넘으면 오래된 부분 자동 요약)
+  summary_threshold: 20
+  
+  # 자동 요약 활성화 여부
+  # true: 요약 자동 실행 (느릴 수 있음)
+  # false: 수동 요약만 사용
+  enable_auto_summary: false
+  
+  # 요약 언어 (대화 요약 시 사용)
+  summary_language: "korean"
 
 emotion:
-  # 로컬 모델 디렉터리
-  model_dir: "./checkpoints/EmotionModel"
-
-  # 토크나이저 디렉터리
-  tokenizer_dir: "./checkpoints/EmotionModel"
-
-  # 허깅페이스 허브 모델 이름
-  hub_model_name: "your-hf/emotion-model"
-
-  # 감정 분석 모델 설정
-  model:
-    name: "your-hf/emotion-model"
-    num_labels: 0
-    dropout_prob: 0.1
-
-  # 예측 확률 필터 임계값
+  model_dir: "./checkpoints/LunaEmotion"
+  tokenizer_dir: "./checkpoints/LunaEmotion"
   threshold: 0.5
 
-  # 감정 레이블 리스트 (예시)
+  load_in_4bit: true
+
+  model:
+    name: "google/electra-small-discriminator"
+    num_labels: 28
+    dropout_prob: 0.1
   label_list:
-    - label_1
-    - label_2
-    - label_3
+    - admiration
+    - amusement
+    - anger
+    - annoyance
+    - approval
+    - caring
+    - confusion
+    - curiosity
+    - desire
+    - disappointment
+    - disapproval
+    - disgust
+    - embarrassment
+    - excitement
+    - fear
+    - gratitude
+    - grief
+    - joy
+    - love
+    - nervousness
+    - optimism
+    - pride
+    - realization
+    - relief
+    - sadness
+    - surprise
+    - neutral
+    - something_else
 
 multi_intent:
-  # 로컬 모델 디렉터리
-  model_dir: "./checkpoints/IntentModel"
-
-  # 토크나이저 디렉터리
-  tokenizer_dir: "./checkpoints/IntentModel"
-
-  # 허깅페이스 허브 모델 이름
-  hub_model_name: "your-hf/intent-model"
-
-  # 인텐트 분류 모델 설정
-  model:
-    name: "your-hf/intent-model"
-    num_labels: 0
-
-  # 예측 확률 필터 임계값
+  model_dir: "./checkpoints/LunaMultiIntent"
+  tokenizer_dir: "./checkpoints/LunaMultiIntent"
   threshold: 0.5
-
-  # 인텐트 레이블 리스트 (예시)
+  model:
+    name: "google/bert_uncased_L-2_H-128_A-2"
+    num_labels: 147
   label_list:
-    - intent_1
-    - intent_2
-    - intent_3
+    - accept_reservations
+    - account_blocked
+    - alarm
+    - application_status
+    - apr
+    - are_you_a_bot
+    - balance
+    - bill_balance
+    - bill_due
+    - book_flight
+    - book_hotel
+    - calculator
+    - calendar
+    - calendar_update
+    - calories
+    - cancel
+    - cancel_reservation
+    - car_rental
+    - card_declined
+    - carry_on
+    - change_accent
+    - change_ai_name
+    - change_language
+    - change_speed
+    - change_user_name
+    - change_volume
+    - confirm_reservation
+    - cook_time
+    - credit_limit
+    - credit_limit_change
+    - credit_score
+    - current_location
+    - damaged_card
+    - date
+    - definition
+    - direct_deposit
+    - directions
+    - distance
+    - do_you_have_pets
+    - exchange_rate
+    - expiration_date
+    - find_phone
+    - flight_status
+    - flip_coin
+    - food_last
+    - freeze_account
+    - fun_fact
+    - gas
+    - gas_type
+    - goodbye
+    - greeting
+    - how_busy
+    - how_old_are_you
+    - improve_credit_score
+    - income
+    - ingredient_substitution
+    - ingredients_list
+    - insurance
+    - insurance_change
+    - interest_rate
+    - international_fees
+    - international_visa
+    - jump_start
+    - last_maintenance
+    - lost_luggage
+    - make_call
+    - meal_suggestion
+    - meaning_of_life
+    - measurement_conversion
+    - meeting_schedule
+    - min_payment
+    - mpg
+    - new_card
+    - next_holiday
+    - next_song
+    - nutrition_info
+    - oil_change_how
+    - oil_change_when
+    - order
+    - order_checks
+    - order_status
+    - pay_bill
+    - payday
+    - pin_change
+    - play_music
+    - plug_type
+    - pto_balance
+    - pto_request
+    - pto_request_status
+    - pto_used
+    - recipe
+    - redeem_rewards
+    - reminder
+    - reminder_update
+    - repeat
+    - replacement_card_duration
+    - report_fraud
+    - report_lost_card
+    - reset_settings
+    - restaurant_reservation
+    - restaurant_reviews
+    - restaurant_suggestion
+    - rewards_balance
+    - roll_dice
+    - rollover_401k
+    - routing
+    - schedule_maintenance
+    - schedule_meeting
+    - share_location
+    - shopping_list
+    - shopping_list_update
+    - smart_home
+    - spelling
+    - spending_history
+    - sync_device
+    - taxes
+    - tell_joke
+    - text
+    - thank_you
+    - time
+    - timer
+    - timezone
+    - tire_change
+    - tire_pressure
+    - todo_list
+    - todo_list_update
+    - traffic
+    - transactions
+    - transfer
+    - translate
+    - travel_alert
+    - travel_notification
+    - travel_suggestion
+    - uber
+    - update_playlist
+    - user_name
+    - vaccines
+    - w2
+    - weather
+    - what_are_your_hobbies
+    - what_can_i_ask_you
+    - what_is_your_name
+    - what_song
+    - where_are_you_from
+    - whisper_mode
+    - who_do_you_work_for
+    - who_made_you
 
 vision:
-  # 비전 모델 디렉터리
-  model_dir: "./checkpoints/VisionModel"
-
-  # 사용할 디바이스 ("CPU", "GPU", "NPU" 등)
-  device: "CPU"
-
-  # 추론 시 생성할 최대 토큰 수
-  max_new_tokens: 32
-
-  # 입력 문자열 최대 길이 제한
-  char_limit: 256
-
-  # 프롬프트 템플릿
+  model_dir: "./checkpoints/LunaVision"
+  device: "NPU"
+  max_new_tokens: 48
+  char_limit: 300
   prompt_tpl: |
     <|user|>
     <|image_1|>
-    SYSTEM: Describe the image.
-    USER: What is in the image?
-    <|assistant|>
+    SYSTEM: You are a Desktop Activity Assistant.
 
-  # 동시에 실행 가능한 추론 수
-  max_concurrent: 1
+    Study the screenshot and describe what the user is doing in one clear and concise English sentence.  
+    Be specific about:
+    - The application names
+    - What the user is doing in each window
+    - Try to mention both windows if more than one is open.
+
+    Format your answer as one sentence only.
+
+    USER: What is the user doing?
+    <|assistant|>
+  max_concurrent: 2
 
 tts:
-  # TTS 모델 디렉터리
-  model_dir: "./checkpoints/TTSModel"
+  model_dir: "./checkpoints/LunaTTS"
+  default_model: "Luna"
+  sampling_rate: 44100
 
-  # 기본 모델 이름
-  default_model: "TTSModel"
-
-  # 샘플링 레이트 (예: 22050, 44100)
-  sampling_rate: 22050
-
-  # TTS 하이퍼파라미터
   noise_scale: 0.6
   noise_scale_w: 0.2
   length_scale: 1.0
-  sdp_ratio: 0.2
+  sdp_ratio: 0.6
   split_interval: 0.5
   line_split: false
+  
+  cache:
+    enable: true
+    cache_dir: "./cache/tts"
+    max_cache_size: 100
+    ttl: 604800
+  
