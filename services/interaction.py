@@ -91,7 +91,43 @@ class InteractionService:
             self.logger.warning(f"[L.U.N.A. InteractionService] 도구 목록 조회 실패: {e}")
             return []
     
+    def _call_builtin_tool(self, tool_name: str, arguments: dict) -> dict | None:
+        """내장 도구 처리 (MCP 없이 빠르게 실행)"""
+        
+        # 시간 도구 - MCP 대신 직접 처리
+        if "time" in tool_name.lower() and "get_current_time" in tool_name:
+            from datetime import datetime
+            import pytz
+            
+            tz_name = arguments.get("timezone", "Asia/Seoul")
+            try:
+                tz = pytz.timezone(tz_name)
+            except Exception:
+                tz = pytz.timezone("Asia/Seoul")
+            
+            now = datetime.now(tz)
+            return {
+                "timezone": tz_name,
+                "datetime": now.isoformat(),
+                "day_of_week": now.strftime("%A"),
+                "is_dst": bool(now.dst())
+            }
+        
+        return None  # 내장 도구 없음 → MCP로 처리
+    
     def _call_mcp_tool(self, server_id: str, tool_name: str, arguments: dict, timeout: float | None = None) -> str:
+        # 내장 도구 먼저 확인 (MCP보다 훨씬 빠름)
+        builtin_result = self._call_builtin_tool(f"{server_id}/{tool_name}", arguments)
+        if builtin_result is not None:
+            self.logger.info(f"[L.U.N.A. InteractionService] 내장 도구 사용: {server_id}/{tool_name}")
+            # MCP CallToolResult 형식으로 래핑
+            from mcp.types import CallToolResult, TextContent
+            import json
+            return CallToolResult(
+                content=[TextContent(type="text", text=json.dumps(builtin_result, ensure_ascii=False))],
+                isError=False
+            )
+        
         if not self.mcp_tool_manager:
             raise Exception("MCP 도구 매니저가 없습니다.")
         
@@ -129,15 +165,13 @@ class InteractionService:
             else:
                 self.logger.info(f"[L.U.N.A. InteractionService] 도구 호출 완료: {tool_elapsed:.2f}s")
 
-            result_str = str(result)
-            if isinstance(result, dict):
-                import json
-                result_str = json.dumps(result, ensure_ascii=False)
-            
-            log_result = result_str[:100] if len(result_str) > 100 else result_str
+            # 로그용으로만 문자열 변환
+            log_result = str(result)[:100]
             self.logger.info(f"[L.U.N.A. InteractionService] 도구 호출 성공: {server_id}/{tool_name}")
             self.logger.info(f"[L.U.N.A. InteractionService] 반환값: {log_result}")
-            return result_str
+            
+            # 원본 객체 반환 (TextContent 등 접근 가능하도록)
+            return result
         except asyncio.TimeoutError:
             self.logger.error(f"[L.U.N.A. InteractionService] '{server_id}/{tool_name}' 도구 호출 타임아웃 ({timeout}초)")
             raise
@@ -204,8 +238,56 @@ class InteractionService:
         return re.sub(r'[^a-z0-9]', '', s.lower())
 
     # 폴백용 함수
-    def _detect_and_suggest_tool(self, user_input: str, mcp_tools: list) -> dict | None:
+    def _detect_and_suggest_tool(self, user_input: str, mcp_tools: list, llm_had_content: bool = False) -> dict | None:
         user_lower = user_input.lower()
+        
+        if llm_had_content:
+            self.logger.info(f"[L.U.N.A. InteractionService] LLM 응답 존재 → 폴백 로직 스킵")
+            return None
+        
+        import re
+        time_question_patterns = [
+            r"몇\s*시",  # "몇시", "몇 시"
+            r"지금\s*(시간|몇시)",  # "지금 시간", "지금 몇시"
+            r"현재\s*시간",  # "현재 시간"
+            r"what\s*time",  # "what time"
+        ]
+    
+        is_time_request = any(re.search(pattern, user_lower) for pattern in time_question_patterns)
+    
+        non_time_contexts = ["시간이", "시간을", "시간에", "시간나면", "시간있", "시간동안"]
+        if any(ctx in user_lower for ctx in non_time_contexts):
+            is_time_request = False
+        
+        if is_time_request:
+            for tool in mcp_tools:
+                tool_name = tool.get('function', {}).get('name', '').lower()
+                if 'time' in tool_name and ('get' in tool_name or 'current' in tool_name):
+                    self.logger.info(f"[L.U.N.A. InteractionService] 폴백: 시간 질문 감지 → 강제 도구 호출")
+                    return {
+                        "id": "auto_tool_call_time",
+                        "function": {
+                            "name": tool.get('function', {}).get('name', ''),
+                            "arguments": {}
+                        }
+                    }
+        
+        # 날씨 질문 감지
+        weather_keywords = ["날씨", "weather", "기온", "온도", "비와", "비 와", "눈와", "눈 와", "맑아", "흐려"]
+        is_weather_request = any(kw in user_lower for kw in weather_keywords)
+        
+        if is_weather_request:
+            for tool in mcp_tools:
+                tool_name = tool.get('function', {}).get('name', '').lower()
+                if 'weather' in tool_name:
+                    self.logger.info(f"[L.U.N.A. InteractionService] 폴백: 날씨 질문 감지 → 강제 도구 호출")
+                    return {
+                        "id": "auto_tool_call_weather",
+                        "function": {
+                            "name": tool.get('function', {}).get('name', ''),
+                            "arguments": {"location": "Seoul"}
+                        }
+                    }
         
         play_keywords = ["틀어", "재생", "플레이", "play", "켜", "켜줘", "들을래", "들으면서"]
         music_context = ["유튜브", "음악", "뮤직", "곡", "노래", "singer", "artist"]
@@ -320,19 +402,19 @@ class InteractionService:
 
         raise ValueError(f"Cannot resolve tool uniquely from name '{raw_name}'. Expected 'server/tool'.")
 
-    def run(self, ko_input_text: str, use_tools: bool = False) -> InteractResponse:
+    def run(self, ko_input_text: str, use_tools: bool = False, skip_tts_generation: bool = False) -> InteractResponse:
         self.logger.info(f"[L.U.N.A. InteractionService] 사용자 입력: {ko_input_text} (도구 사용: {use_tools})")
         
         if use_tools and self.mcp_tool_manager:
             mcp_tools = self._get_available_mcp_tools()
             if mcp_tools:
                 self.logger.info(f"[L.U.N.A. InteractionService] 에이전트 모드 활성화 - MCP 도구 {len(mcp_tools)}개")
-                return self._run_agent_mode(ko_input_text)
+                return self._run_agent_mode(ko_input_text, skip_tts_generation=skip_tts_generation)
         
         self.logger.info("[L.U.N.A. InteractionService] 일반 모드 처리")
-        return self._run_normal_mode(ko_input_text)
+        return self._run_normal_mode(ko_input_text, skip_tts_generation=skip_tts_generation)
         
-    def _run_agent_mode(self, ko_input_text: str) -> InteractResponse:
+    def _run_agent_mode(self, ko_input_text: str, skip_tts_generation: bool = False) -> InteractResponse:
         import time
         import re
         pipeline_start = time.time()
@@ -349,12 +431,15 @@ class InteractionService:
                 self.logger.warning(f"[L.U.N.A. InteractionService] 번역 실패, 원문 사용: {e}")
                 en_input = ko_input_text
 
-        context_messages = self.memory_service.get_context_for_llm()
+        context_messages = self.memory_service.get_full_context_for_llm()
         
-        messages = []
+        # 이전 방식
+        # messages = []
+        # messages.extend([m for m in context_messages if m.get("role") != "system"])
+        # messages.append({"role": "user", "content": en_input})
         
-        messages.extend([m for m in context_messages if m.get("role") != "system"])
-        
+        # 시스템 프롬프트 포함 방식
+        messages = context_messages.copy()
         messages.append({"role": "user", "content": en_input})
         
         mcp_tools = self._get_available_mcp_tools()
@@ -382,157 +467,126 @@ class InteractionService:
         self.logger.info(f"[L.U.N.A. InteractionService] 도구 호출 발견: {len(tool_calls)}개")
 
         if not tool_calls:
-            auto_tool_call = self._detect_and_suggest_tool(ko_input_text, mcp_tools)
+            llm_had_meaningful_response = bool(response_content and len(response_content.strip()) > 10)
+            auto_tool_call = self._detect_and_suggest_tool(
+                ko_input_text, 
+                mcp_tools,
+                llm_had_content=llm_had_meaningful_response
+            )
             if auto_tool_call:
                 self.logger.info(f"[L.U.N.A. InteractionService] 자동 도구 감지: {auto_tool_call['function']['name']}")
                 tool_calls = [auto_tool_call]
+                
+        final_ko = ""
+        tool_used_flag = False
 
         if not tool_calls:
             cleaned = response_content or ""
 
             cleaned = re.sub(r'\[CONTEXT\].*', '', cleaned, flags=re.IGNORECASE | re.DOTALL)
-
-            cleaned = re.sub(
-                r'✓\s*[^\n]*실행 결과[\s\S]*?```[\s\S]*?```',
-                '',
-                cleaned,
-                flags=re.DOTALL
-            )
-
-            cleaned = re.sub(
-                r'^\s*```[\s\S]*?```\s*',
-                '',
-                cleaned,
-                flags=re.DOTALL
-            ).strip()
-
-            if not cleaned:
-                cleaned = "그냥 네 생각 기다리는 중."
-
-            response_content = cleaned
-
-            final_ko = response_content if is_api_mode else self.translator_service.translate(response_content, "en", "ko")
             
-            try:
-                self.memory_service.add_entry(
-                    user_input=ko_input_text,
-                    assistant_response=final_ko,
-                    metadata={
-                        "mode": "agent",
-                        "tool_called": False,
-                        "tools_used": []
-                    }
-                )
-                self.logger.info(f"[L.U.N.A. InteractionService] 대화 메모리 저장 완료 (도구 없음)")
-            except Exception as e:
-                self.logger.warning(f"[L.U.N.A. InteractionService] 메모리 저장 실패: {e}")
+            cleaned = re.sub(r'✓\s*[^\n]*실행 결과[\s\S]*?```[\s\S]*?```', '', cleaned, flags=re.DOTALL)
             
-            top_emotion = "neutral"
-            style, style_weight = get_style_from_emotion(top_emotion)
-            ja = self.translator_service.translate(final_ko, "ko", "ja")
-            tts = self.tts_service.synthesize(text=ja, style=style, style_weight=style_weight)
+            cleaned = re.sub(r'^\s*```[\s\S]*?```\s*', '', cleaned, flags=re.DOTALL).strip()
             
-            pipeline_elapsed = time.time() - pipeline_start
-            if pipeline_elapsed > 30:
-                self.logger.warning(f"[L.U.N.A. InteractionService] 전체 처리 시간: {pipeline_elapsed:.2f}s (30초 초과 - 타임아웃 위험)")
+            cleaned = re.sub(r'\[THOUGHT\][\s\S]*?(\[\/THOUGHT\]|$)', '', cleaned, flags=re.IGNORECASE).strip()
+            
+            cleaned = re.sub(r'^(생각|思考|thinking|thought)\s*[:：]\s*.*?(?=\n\n|\n[^a-zA-Z가-힣]|$)', '', cleaned, flags=re.IGNORECASE | re.DOTALL).strip()
+            
+            cleaned = re.sub(r'\[\/?CHARACTER\]', '', cleaned, flags=re.IGNORECASE).strip()
+
+            if not cleaned: 
+                cleaned = "음... (생각 중)"
+
+            final_ko = cleaned if is_api_mode else self.translator_service.translate(cleaned, "en", "ko")
+            tool_used_flag = False
+            
+        else:
+            tool_used_flag = True
+            tool_call = tool_calls[0]
+            tool_name = tool_call["function"]["name"]
+            raw_args = tool_call["function"].get("arguments", {})
+            if isinstance(raw_args, str):
+                try:
+                    import json
+                    tool_args = json.loads(raw_args)
+                except Exception:
+                    self.logger.warning("[L.U.N.A. InteractionService] arguments JSON 파싱 실패 → {} 사용")
+                    tool_args = {}
             else:
-                self.logger.info(f"[L.U.N.A. InteractionService] 전체 처리 완료: {pipeline_elapsed:.2f}s")
-            
-            return InteractResponse(text=final_ko, emotion=top_emotion, intent="agent", style=style, audio_url=tts.get("audio_url",""))
+                tool_args = raw_args if isinstance(raw_args, dict) else {}
 
-        tool_call = tool_calls[0]
-        tool_name = tool_call["function"]["name"]
-        raw_args = tool_call["function"].get("arguments", {})
-        if isinstance(raw_args, str):
             try:
-                import json
-                tool_args = json.loads(raw_args)
-            except Exception:
-                self.logger.warning("[L.U.N.A. InteractionService] arguments JSON 파싱 실패 → {} 사용")
-                tool_args = {}
-        else:
-            tool_args = raw_args if isinstance(raw_args, dict) else {}
-
-        try:
-            server_id, mcp_tool_name = self._resolve_server_and_tool(tool_name, mcp_tools)
-        except Exception as e:
-            ack_ko = f"도구 이름을 해석하지 못했어: {tool_name} ({e})"
-            top_emotion = "neutral"
-            style, style_weight = get_style_from_emotion(top_emotion)
-            ja = self.translator_service.translate(ack_ko, "ko", "ja")
-            tts = self.tts_service.synthesize(text=ja, style=style, style_weight=style_weight)
-            return InteractResponse(text=ack_ko, emotion=top_emotion, intent="agent", style=style, audio_url=tts.get("audio_url",""))
-
-        if not response_content:
-            response_content = "알겠어."
-            self.logger.info(f"[L.U.N.A. InteractionService] 빈 응답 → 기본 메시지 사용")
-        
-        if tool_end_idx > 0 and tool_end_idx < len(response_content):
-            response_without_tool_call = response_content[tool_end_idx:].strip()
-            self.logger.info(f"[L.U.N.A. InteractionService] 도구 호출 텍스트 제거됨 (위치: {tool_end_idx})")
-        else:
-            response_without_tool_call = response_content
-        
-        import re
-        response_without_tool_call = re.sub(r'^[\}\s,]+', '', response_without_tool_call).strip()
-        
-        final_response = response_without_tool_call if response_without_tool_call else response_content
-        
-        final_ko = final_response if is_api_mode else self.translator_service.translate(final_response, "en", "ko")
-        top_emotion = "neutral"
-        style, style_weight = get_style_from_emotion(top_emotion)
-        ja = self.translator_service.translate(final_ko, "ko", "ja")
-        
-        import time
-        tts_start = time.time()
-        self.logger.info(f"[L.U.N.A. InteractionService] 📍 음성 합성 시작")
-        
-        tts = self.tts_service.synthesize(text=ja, style=style, style_weight=style_weight)
-        
-        tts_elapsed = time.time() - tts_start
-        if tts_elapsed > 15:
-            self.logger.warning(f"[L.U.N.A. InteractionService] 음성 합성 지연 중: {tts_elapsed:.2f}s (15초 초과)")
-        else:
-            self.logger.info(f"[L.U.N.A. InteractionService] 음성 합성 완료: {tts_elapsed:.2f}s")
-        
-        try:
-            self.memory_service.add_entry(
-                user_input=ko_input_text,
-                assistant_response=final_ko,
-                metadata={
-                    "mode": "agent",
-                    "tool_called": len(tool_calls) > 0,
-                    "tools_used": [tc["function"]["name"] for tc in tool_calls] if tool_calls else [],
-                    "tool_pending_execution": True
-                }
-            )
-            self.logger.info(f"[L.U.N.A. InteractionService] 대화 메모리 저장 완료 (도구 실행 대기 중)")
-        except Exception as e:
-            self.logger.warning(f"[L.U.N.A. InteractionService] 메모리 저장 실패: {e}")
-        
-        import asyncio # ignored
-        import threading
-        import time
-        
-        tool_result_buffer = {"result": None, "error": None}
-        
-        def run_tool_in_background():
-            try:
-                self.logger.info(f"[L.U.N.A. InteractionService] 백그라운드 도구 실행 시작: {server_id}/{mcp_tool_name}")
-                self.logger.info(f"[L.U.N.A. InteractionService] 도구 인수: {tool_args}")
-                result = self._call_mcp_tool(server_id, mcp_tool_name, tool_args)
-                self.logger.info(f"[L.U.N.A. InteractionService] 백그라운드 도구 실행 완료!")
-                self.logger.info(f"[L.U.N.A. InteractionService] 도구 반환값: {result[:200] if isinstance(result, str) else result}")
+                server_id, mcp_tool_name = self._resolve_server_and_tool(tool_name, mcp_tools)
+            except Exception as e:
+                final_ko = f"도구 이름을 해석하지 못했어: {tool_name} ({e})"
+                server_id, mcp_tool_name = "unknown", tool_name
                 
-                tool_result_buffer["result"] = result
+            if not final_ko:
+                self.logger.info(f"[L.U.N.A. InteractionService] 도구 실행 시작: {server_id}/{mcp_tool_name}")
+                self.logger.info(f"[L.U.N.A. InteractionService] 도구 인수: {tool_args}")
                 
                 try:
                     import json
+                    tool_result = self._call_mcp_tool(server_id, mcp_tool_name, tool_args)
+                    self.logger.info(f"[L.U.N.A. InteractionService] 도구 실행 완료!")
+                    self.logger.info(f"[L.U.N.A. InteractionService] 도구 반환값: {str(tool_result)[:300]}")
                     
-                    extracted_info = None
+                    result_text = ""
+                    if isinstance(tool_result, str):
+                        result_text = tool_result
+                    else:
+                        extracted = False
+                        
+                        try:
+                            if hasattr(tool_result, 'content') and tool_result.content:
+                                for content_item in tool_result.content:
+                                    if hasattr(content_item, 'text') and content_item.text:
+                                        result_text = content_item.text
+                                        extracted = True
+                                        break
+                        except Exception as e:
+                            self.logger.warning(f"[L.U.N.A. InteractionService] content 직접 접근 실패: {e}")
+                        
+                        if not extracted or not result_text:
+                            tool_result_str = str(tool_result)
+                            text_start = tool_result_str.find("text='")
+                            if text_start != -1:
+                                text_start += 6
+                                end_marker = tool_result_str.find("', annotations", text_start)
+                                if end_marker == -1:
+                                    end_marker = tool_result_str.find("')", text_start)
+                                if end_marker == -1:
+                                    end_marker = tool_result_str.find("']", text_start)
+                                
+                                if end_marker != -1:
+                                    result_text = tool_result_str[text_start:end_marker]
+                                    result_text = result_text.replace('\\n', '\n').replace("\\'", "'")
+                            
+                            if not result_text:
+                                json_start = tool_result_str.find('{')
+                                if json_start != -1:
+                                    depth = 0
+                                    json_end = -1
+                                    for i, ch in enumerate(tool_result_str[json_start:], json_start):
+                                        if ch == '{':
+                                            depth += 1
+                                        elif ch == '}':
+                                            depth -= 1
+                                            if depth == 0:
+                                                json_end = i + 1
+                                                break
+                                    if json_end > json_start:
+                                        result_text = tool_result_str[json_start:json_end]
+                                    else:
+                                        result_text = tool_result_str
+                                else:
+                                    result_text = tool_result_str
+                    
+                    self.logger.info(f"[L.U.N.A. InteractionService] 추출된 텍스트: {result_text[:200]}")
+                    
+                    extracted_data = None
                     try:
-                        result_text = result if isinstance(result, str) else str(result)
-
                         json_candidates = []
                         buf = []
                         depth = 0
@@ -552,83 +606,126 @@ class InteractionService:
                                             json_candidates.append(obj)
                                     except Exception:
                                         pass
-
-                        target = None
-
+                        
                         if json_candidates:
-                            candidates_with_id = [o for o in json_candidates if "id" in o]
-                            if candidates_with_id:
-                                target = max(candidates_with_id, key=lambda o: len(o.keys()))
-
-                            if target is None:
-                                status_like = [o for o in json_candidates if any(k in o for k in ("status", "code", "message"))]
-                                if status_like:
-                                    target = max(status_like, key=lambda o: len(o.keys()))
-
-                            if target is None:
-                                target = max(json_candidates, key=lambda o: len(o.keys()))
-
-                        if target is not None:
-                            extracted_info = {
-                                "id": target.get("id", "N/A"),
-                                "object": target.get("object", "N/A"),
-                                "status": target.get("status", "N/A"),
-                                "code": target.get("code", "N/A"),
-                                "message": target.get("message", "N/A"),
-                                "created_time": (
-                                    target.get("created_time")
-                                    or target.get("createdTime")
-                                    or "N/A"
-                                ),
-                                "data": target,
+                            extracted_data = max(json_candidates, key=lambda o: len(o.keys()))
+                    except Exception:
+                        pass
+                    
+                    self.logger.info(f"[L.U.N.A. InteractionService] 도구 결과를 바탕으로 LLM 후속 응답 생성 중...")
+                    
+                    followup_messages = messages.copy()
+                    
+                    followup_messages.append({
+                        "role": "assistant",
+                        "content": response_content
+                    })
+                    
+                    safe_tool_result = result_text[:1000] if result_text else "Success"
+                    
+                    followup_messages.append({
+                        "role": "user",
+                        "content": f"[System: 도구 '{mcp_tool_name}' 실행 결과입니다]\n{safe_tool_result}\n\n이 결과를 바탕으로 사용자에게 자연스럽게 대답해줘. (일본어가 아닌 한국어로)"
+                    })
+                    
+                    final_llm_response = self.llm_service.generate(
+                        target=self.llm_target,
+                        system_prompt=self.rp_prompt_template,
+                        messages=followup_messages,
+                        tools=None,
+                        skip_cache=True
+                    )
+                    
+                    if final_llm_response and "choices" in final_llm_response:
+                        final_ko = final_llm_response["choices"][0]["message"]["content"].strip()
+                        self.logger.info(f"[L.U.N.A. InteractionService] LLM 후속 응답: {final_ko}")
+                    else:
+                        final_ko = "작업을 완료했어, 다엘."
+                    
+                    try:
+                        tool_result_message = f"{server_id}/{mcp_tool_name} 실행 결과\n{result_text[:500]}"
+                        self.memory_service.add_entry(
+                            user_input=ko_input_text,
+                            assistant_response=final_ko,
+                            metadata={
+                                "mode": "agent",
+                                "tool_called": True,
+                                "tool_name": mcp_tool_name,
+                                "server_id": server_id,
+                                "tool_result": extracted_data if extracted_data else {"raw": result_text[:300]},
                             }
-                        else:
-                            extracted_info = {"raw": result_text[:300]}
-
-                    except Exception as parse_err:
-                        self.logger.debug(f"[L.U.N.A. InteractionService] JSON 파싱 실패: {parse_err}")
-                        extracted_info = {"raw": (result if isinstance(result, str) else str(result))[:300]}
+                        )
+                        self.logger.info(f"[L.U.N.A. InteractionService] 도구 결과 메모리 저장 완료")
+                    except Exception as me:
+                        self.logger.warning(f"[L.U.N.A. InteractionService] 메모리 저장 실패: {me}")
+                        
+                except Exception as e:
+                    self.logger.error(f"[L.U.N.A. InteractionService] 도구 실행 오류: {e}", exc_info=True)
+                    final_ko = "도구 실행 중 문제가 생겼어, 다엘."
                     
-                    tool_result_message = (
-                        f"{server_id}/{mcp_tool_name} 실행 결과\n"
-                        f"{json.dumps(extracted_info, ensure_ascii=False, indent=2)}"
-                    )
+        top_emotion = "Neutral"
+        
+        try:
+            if "사랑" in final_ko or "좋아" in final_ko: 
+                top_emotion = "yandere1"
+            elif "부끄" in final_ko or "쑥쓰" in final_ko: 
+                top_emotion = "shy1"
+            elif "미안" in final_ko or "슬퍼" in final_ko: 
+                top_emotion = "sad1"
+            elif "화나" in final_ko:
+                top_emotion = "anger1"
+            elif "재밌" in final_ko or "기뻐" in final_ko:
+                top_emotion = "smile1"
 
-                    self.memory_service.add_entry(
-                        user_input=f"[{mcp_tool_name} 도구 실행]",
-                        assistant_response=tool_result_message,
-                        metadata={
-                            "mode": "tool_result",
-                            "tool_name": mcp_tool_name,
-                            "server_id": server_id,
-                            "is_tool_result": True,
-                            "tool_result_info": extracted_info,
-                        }
-                    )
-                    self.logger.info(f"[L.U.N.A. InteractionService] 도구 결과를 메모리에 저장 완료: {extracted_info}")
-                except Exception as me:
-                    self.logger.warning(f"[L.U.N.A. InteractionService] 도구 결과 메모리 저장 실패: {me}")
-                    
+            self.logger.info(f"[L.U.N.A. Analysis] 보낼 표정: {top_emotion}")
+        except:
+            pass
+
+        style, style_weight = get_style_from_emotion(top_emotion)
+        
+        audio_url = ""
+        if not skip_tts_generation:
+            try:
+                ja = self.translator_service.translate(final_ko, "ko", "ja")
+                import time
+                tts_start = time.time()
+                self.logger.info(f"[L.U.N.A. InteractionService] 📍 음성 합성 시작")
+                
+                tts = self.tts_service.synthesize(text=ja, style=style, style_weight=style_weight)
+                audio_url = tts.get("audio_url", "")
+                
+                tts_elapsed = time.time() - tts_start
+                if tts_elapsed > 15:
+                    self.logger.warning(f"[L.U.N.A. InteractionService] 음성 합성 지연: {tts_elapsed:.2f}s")
+                else:
+                    self.logger.info(f"[L.U.N.A. InteractionService] 음성 합성 완료: {tts_elapsed:.2f}s")
             except Exception as e:
-                self.logger.error(f"[L.U.N.A. InteractionService] 백그라운드 도구 실행 오류: {e}", exc_info=True)
-                tool_result_buffer["error"] = str(e)
-            finally:
-                time.sleep(0.5)
-        
-        tool_thread = threading.Thread(target=run_tool_in_background, daemon=False)
-        tool_thread.start()
-        
-        self.logger.info(f"[L.U.N.A. InteractionService] 즉시 응답 반환 (도구는 백그라운드 실행)")
-        
-        pipeline_elapsed = time.time() - pipeline_start
-        if pipeline_elapsed > 30:
-            self.logger.warning(f"[L.U.N.A. InteractionService] 전체 처리 시간: {pipeline_elapsed:.2f}s (30초 초과 - 타임아웃 위험)")
+                self.logger.error(f"TTS 생성 실패: {e}")
         else:
-            self.logger.info(f"[L.U.N.A. InteractionService] 전체 처리 완료: {pipeline_elapsed:.2f}s")
+            self.logger.info(f"[L.U.N.A. InteractionService] TTS 스킵")
+
+        if not tool_used_flag:
+            try:
+                self.memory_service.add_entry(
+                    user_input=ko_input_text,
+                    assistant_response=final_ko,
+                    metadata={
+                        "mode": "agent", 
+                        "tool_called": False, 
+                        "tools_used": [],
+                        "emotion": top_emotion
+                    }
+                )
+                self.logger.info(f"[L.U.N.A. InteractionService] 대화 메모리 저장 완료 (도구 없음)")
+            except Exception as e:
+                self.logger.warning(f"[L.U.N.A. InteractionService] 메모리 저장 실패: {e}")
+
+        pipeline_elapsed = time.time() - pipeline_start
+        self.logger.info(f"[L.U.N.A. InteractionService] 전체 처리 완료: {pipeline_elapsed:.2f}s")
         
-        return InteractResponse(text=final_ko, emotion=top_emotion, intent="agent", style=style, audio_url=tts.get("audio_url",""))
+        return InteractResponse(text=final_ko, emotion=top_emotion, intent="agent", style=style, audio_url=audio_url)
         
-    def _run_normal_mode(self, ko_input_text: str) -> InteractResponse:
+    def _run_normal_mode(self, ko_input_text: str, skip_tts_generation: bool = False) -> InteractResponse:
         try:
             is_api_mode = self.llm_service.get_mode() == "api"
             
@@ -642,7 +739,7 @@ class InteractionService:
             emotion_probs = self.emotion_service.predict(input_text)
             top_emotion = max(emotion_probs, key=emotion_probs.get) if emotion_probs else "neutral"
 
-            context_messages = self.memory_service.get_context_for_llm()
+            context_messages = self.memory_service.get_full_context_for_llm()
             
             messages = [
                 {"role": "system", "content": self.rp_prompt_template}
@@ -665,6 +762,36 @@ class InteractionService:
             else:
                 ko_response = self.translator_service.translate(response_text, "en", "ko")
                 self.logger.info(f"[L.U.N.A. InteractionService] 한국어로 번역: {ko_response}")
+                
+            try:
+                analysis_text = ko_response
+                if any(ord(c) > 127 for c in ko_response):
+                    try:
+                        analysis_text = self.translator_service.translate(ko_response, "ko", "en")
+                        self.logger.info(f"[L.U.N.A. Analysis] 감정 분석용 영어 번역: {analysis_text[:30]}...")
+                    except:
+                        pass
+                    
+                final_emotion_probs = self.emotion_service.predict(analysis_text)
+                if final_emotion_probs:
+                    top_emotion = max(final_emotion_probs, key=final_emotion_probs.get)
+                
+                if "사랑" in ko_response or "좋아해" in ko_response or "반짝" in ko_response: 
+                    top_emotion = "love"
+                elif "부끄" in ko_response or "쑥쓰" in ko_response or "헤헤" in ko_response: 
+                    top_emotion = "shy"
+                elif "미안" in ko_response or "슬퍼" in ko_response or "ㅠㅠ" in ko_response: 
+                    top_emotion = "sadness"
+                elif "화나" in ko_response or "바보" in ko_response:
+                    top_emotion = "anger"
+                elif "재밌" in ko_response or "ㅋㅋㅋ" in ko_response:
+                    top_emotion = "joy"
+                else:
+                    pass
+                    
+                self.logger.info(f"[L.U.N.A. Analysis] 일반 모드 감정: {top_emotion}")
+            except Exception:
+                pass
             
             self.memory_service.add_entry(
                 user_input=ko_input_text,
@@ -677,26 +804,30 @@ class InteractionService:
             )
             self.logger.info(f"[L.U.N.A. InteractionService] 대화 저장 완료")
             
-            ja_text_for_tts = self.translator_service.translate(ko_response, "ko", "ja")
             style, style_weight = get_style_from_emotion(top_emotion)
             
-            try:
-                loop = asyncio.get_event_loop()
-            except RuntimeError:
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-            
-            tts_result = loop.run_until_complete(
-                self.tts_service.synthesize_async(
-                    text=ja_text_for_tts,
-                    style=style,
-                    style_weight=style_weight
+            audio_url = ""
+            if not skip_tts_generation:
+                ja_text_for_tts = self.translator_service.translate(ko_response, "ko", "ja")
+                
+                try:
+                    loop = asyncio.get_event_loop()
+                except RuntimeError:
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                
+                tts_result = loop.run_until_complete(
+                    self.tts_service.synthesize_async(
+                        text=ja_text_for_tts,
+                        style=style,
+                        style_weight=style_weight
+                    )
                 )
-            )
+                audio_url = tts_result.get("audio_url", "")
 
             return InteractResponse(
                 text=ko_response, emotion=top_emotion, intent="general",
-                style=style, audio_url=tts_result.get("audio_url", "")
+                style=style, audio_url=audio_url
             )
         except Exception as e:
             self.logger.error(f"파이프라인 실행 중 오류: {e}", exc_info=True)

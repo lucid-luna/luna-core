@@ -147,6 +147,63 @@ class DatabaseManager:
                 ON summaries(user_id, session_id, timestamp DESC)
             """)
             
+            # ==================== 장기 메모리 (Core Memory) ====================
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS core_memories (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id TEXT NOT NULL DEFAULT 'default',
+                    category TEXT NOT NULL,
+                    key TEXT NOT NULL,
+                    value TEXT NOT NULL,
+                    importance INTEGER DEFAULT 5,
+                    source TEXT,
+                    metadata TEXT,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(user_id, category, key)
+                )
+            """)
+            
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_core_memories_user_category 
+                ON core_memories(user_id, category)
+            """)
+            
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_core_memories_importance 
+                ON core_memories(importance DESC)
+            """)
+            
+            # ==================== 단기 메모리 (Working Memory) ====================
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS working_memories (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id TEXT NOT NULL DEFAULT 'default',
+                    session_id TEXT NOT NULL DEFAULT 'default',
+                    topic TEXT NOT NULL,
+                    content TEXT NOT NULL,
+                    importance INTEGER DEFAULT 3,
+                    expires_at DATETIME NOT NULL,
+                    metadata TEXT,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_working_memories_user_session 
+                ON working_memories(user_id, session_id)
+            """)
+            
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_working_memories_expires 
+                ON working_memories(expires_at)
+            """)
+            
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_working_memories_topic 
+                ON working_memories(topic)
+            """)
+            
             cursor.execute("""
                 CREATE VIRTUAL TABLE IF NOT EXISTS conversations_fts 
                 USING fts5(

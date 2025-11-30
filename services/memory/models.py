@@ -115,3 +115,85 @@ class MemoryCleanupResponse(BaseModel):
     deleted_conversations: int
     deleted_summaries: int
     message: str
+
+
+# ====================================================================
+#  장기/단기 메모리 모델
+# ====================================================================
+
+class MemoryType(str):
+    """메모리 타입 상수"""
+    CORE = "core"           # 장기 메모리 (영구 저장)
+    WORKING = "working"     # 단기 메모리 (만료됨)
+
+
+class CoreMemoryCategory(str):
+    """장기 메모리 카테고리"""
+    USER_INFO = "user_info"         # 사용자 정보 (이름, 성격 등)
+    PREFERENCES = "preferences"     # 선호도 (좋아하는 것, 싫어하는 것)
+    PROJECTS = "projects"           # 프로젝트 정보
+    RELATIONSHIPS = "relationships" # 관계 정보 (호칭, 대화 스타일)
+    FACTS = "facts"                 # 중요한 사실
+
+
+class CoreMemoryCreate(BaseModel):
+    """장기 메모리 생성 요청"""
+    user_id: str = "default"
+    category: str  # CoreMemoryCategory 값
+    key: str       # 고유 키 (예: "name", "project_luna")
+    value: str     # 저장할 내용
+    importance: int = Field(default=5, ge=1, le=10)  # 중요도 1-10
+    source: Optional[str] = None  # 출처 (대화 ID 등)
+    metadata: Optional[Dict[str, Any]] = None
+
+
+class CoreMemoryResponse(BaseModel):
+    """장기 메모리 응답"""
+    id: int
+    user_id: str
+    category: str
+    key: str
+    value: str
+    importance: int
+    source: Optional[str] = None
+    metadata: Optional[Dict[str, Any]] = None
+    created_at: datetime
+    updated_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+
+class WorkingMemoryCreate(BaseModel):
+    """단기 메모리 생성 요청"""
+    user_id: str = "default"
+    session_id: str = "default"
+    topic: str          # 주제 (예: "노션 페이지 작업")
+    content: str        # 내용
+    expires_at: Optional[datetime] = None  # 만료 시간 (기본: 3일 후)
+    importance: int = Field(default=3, ge=1, le=10)
+    metadata: Optional[Dict[str, Any]] = None
+
+
+class WorkingMemoryResponse(BaseModel):
+    """단기 메모리 응답"""
+    id: int
+    user_id: str
+    session_id: str
+    topic: str
+    content: str
+    importance: int
+    expires_at: datetime
+    is_expired: bool = False
+    metadata: Optional[Dict[str, Any]] = None
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+
+class MemoryExtraction(BaseModel):
+    """LLM이 추출한 메모리 정보"""
+    core_memories: List[CoreMemoryCreate] = []
+    working_memories: List[WorkingMemoryCreate] = []
+    should_update: List[str] = []  # 업데이트할 기존 메모리 키들

@@ -1,6 +1,8 @@
 # services/mcp/external_manager.py
 
 from __future__ import annotations
+import os
+import traceback
 import asyncio
 import json
 from pathlib import Path
@@ -56,10 +58,14 @@ class ExternalMCPManager:
                 await self._start_stdio(sid, cfg)
 
     async def _start_stdio(self, server_id: str, cfg: MCPServerConfig):
+        env_vars = os.environ.copy()
+        if cfg.env:
+            env_vars.update(cfg.env)
+            
         params = StdioServerParameters(
             command=cfg.command or "",
             args=cfg.args or [],
-            env=cfg.env or None,
+            env=env_vars,
             cwd=cfg.cwd or None,
         )
         self.logger.info(f"[L.U.N.A. ExternalMCPManager] 클라이언트 시작: {server_id}")
@@ -96,6 +102,20 @@ class ExternalMCPManager:
                 self.logger.info(f"[L.U.N.A. ExternalMCPManager] '{server_id}' 작업 취소됨")
                 return
             except Exception as e:
+                self.logger.error(f"========== [L.U.N.A. Error Trace] ==========")
+                self.logger.error(f"서버 ID: {server_id}")
+                
+                if hasattr(e, 'exceptions'):
+                    for i, sub_exc in enumerate(e.exceptions):
+                        self.logger.error(f"내부 에러 #{i+1}: {type(sub_exc).__name__} - {str(sub_exc)}")
+                        tb_str = "".join(traceback.format_exception(type(sub_exc), sub_exc, sub_exc.__traceback__))
+                        self.logger.error(f"스택 트레이스:\n{tb_str}")
+                else:
+                    tb_str = "".join(traceback.format_exception(type(e), e, e.__traceback__))
+                    self.logger.error(f"상세 에러:\n{tb_str}")
+                
+                self.logger.error(f"============================================")
+                        
                 if attempt + 1 < max_retries:
                     wait_sec = 2 ** (attempt + 1)
                     self.logger.warning(f"[L.U.N.A. ExternalMCPManager] '{server_id}' 연결 실패 ({type(e).__name__}). {wait_sec}초 후 재시도...")
@@ -149,20 +169,30 @@ class ExternalMCPManager:
         return result.resources if hasattr(result, 'resources') else result
 
     async def call_tool(self, server_id: str, tool_name: str, arguments: dict, timeout: float | None = None):
+        import time
+        call_start = time.time()
+        
         session = self.sessions.get(server_id)
         if not session:
+            self.logger.warning(f"[L.U.N.A. ExternalMCPManager] '{server_id}' 세션 없음 - 재연결 필요")
             raise RuntimeError(f"'{server_id}' 세션 없음/비활성화")
+        
+        self.logger.info(f"[L.U.N.A. ExternalMCPManager] '{server_id}/{tool_name}' 호출 시작 (세션 있음)")
         
         async def _invoke():
             return await session.call_tool(tool_name, arguments)
         
-        if timeout and timeout > 0:
-            try:
-                return await asyncio.wait_for(_invoke(), timeout=timeout)
-            except asyncio.TimeoutError:
-                try:
-                    pass
-                finally:
-                    raise
-        else:
-            return await _invoke()
+        try:
+            if timeout and timeout > 0:
+                result = await asyncio.wait_for(_invoke(), timeout=timeout)
+            else:
+                result = await _invoke()
+            
+            elapsed = time.time() - call_start
+            self.logger.info(f"[L.U.N.A. ExternalMCPManager] '{server_id}/{tool_name}' 완료: {elapsed:.2f}s")
+            return result
+            
+        except asyncio.TimeoutError:
+            elapsed = time.time() - call_start
+            self.logger.error(f"[L.U.N.A. ExternalMCPManager] '{server_id}/{tool_name}' 타임아웃: {elapsed:.2f}s")
+            raise

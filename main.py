@@ -61,6 +61,17 @@ llm_service = None
 memory_service = None
 interaction_service = None
 
+# Unity 연결 상태 추적
+unity_connections = {
+    "connected": False,
+    "client_count": 0,
+    "last_connected": None,
+    "last_disconnected": None,
+}
+
+# Unity WebSocket 클라이언트 목록 (브로드캐스트용)
+unity_websocket_clients: list[WebSocket] = []
+
 class AppLifespan:
     def __init__(self):
         # 필요하면 여기에 공유 상태를 넣을 수 있어요
@@ -342,6 +353,16 @@ class LLMResponse(BaseModel):
 class InteractRequest(BaseModel):
     input: str
     use_tools: bool = False  # MCP 도구 사용 여부
+    
+class UnityPayload(BaseModel):
+    type: str 
+    
+    blendSpeed: Optional[float] = None
+    maxIntensity: Optional[float] = None
+    showSubtitles: Optional[bool] = None
+    subtitleFontSize: Optional[int] = None
+    volume: Optional[float] = None
+    action: Optional[str] = None
 
 # ====================================================================
 # MCP Tool 관련 Request/Response 스키마
@@ -377,7 +398,7 @@ def health() -> dict[str, str]:
     """
     서비스 상태 확인용 엔드포인트
     """
-    return {"server": "L.U.N.A.", "version": "1.3.0", "status": "healthy"}
+    return {"server": "L.U.N.A.", "version": "1.5.0", "status": "healthy"}
 
 # ====================================================================
 # Logs 엔드포인트
@@ -681,7 +702,19 @@ async def websocket_asr_endpoint(websocket: WebSocket):
     Args:
         websocket (WebSocket): WebSocket 연결 객체
     """
+    global unity_connections, unity_websocket_clients
+    from datetime import datetime
+    
     await websocket.accept()
+    
+    # Unity WebSocket 클라이언트 목록에 추가
+    unity_websocket_clients.append(websocket)
+    
+    # Unity 연결 상태 업데이트
+    unity_connections["connected"] = True
+    unity_connections["client_count"] += 1
+    unity_connections["last_connected"] = datetime.now().isoformat()
+    print(f"[L.U.N.A. WebSocket] Unity 클라이언트 연결 (총 {unity_connections['client_count']}개)")
     
     async def result_callback(text: str):
         response_data = interaction_service.run(text)
@@ -697,6 +730,50 @@ async def websocket_asr_endpoint(websocket: WebSocket):
         print("[L.U.N.A. WebSocket] 클라이언트 연결 종료")
     finally:
         asr_service.stop_transcription()
+        # Unity WebSocket 클라이언트 목록에서 제거
+        if websocket in unity_websocket_clients:
+            unity_websocket_clients.remove(websocket)
+        # Unity 연결 상태 업데이트
+        unity_connections["client_count"] = max(0, unity_connections["client_count"] - 1)
+        unity_connections["connected"] = unity_connections["client_count"] > 0
+        unity_connections["last_disconnected"] = datetime.now().isoformat()
+        print(f"[L.U.N.A. WebSocket] Unity 연결 해제 (남은 연결: {unity_connections['client_count']}개)")
+
+# Unity 연결 상태 확인 API
+@app.get("/unity/status", tags=["System"])
+async def get_unity_status():
+    """
+    Unity 클라이언트 연결 상태를 반환합니다.
+    
+    Returns:
+        dict: Unity 연결 상태 정보
+    """
+    return {
+        "connected": unity_connections["connected"],
+        "client_count": unity_connections["client_count"],
+        "last_connected": unity_connections["last_connected"],
+        "last_disconnected": unity_connections["last_disconnected"],
+    }
+    
+@app.post("/unity/message", tags=["System"])
+async def send_to_unity(payload: UnityPayload):
+    """
+    프론트엔드(React)에서 보낸 설정/명령을 유니티 클라이언트로 브로드캐스트합니다.
+    """
+    message_data = payload.model_dump(exclude_none=True)
+    
+    if not unity_connections["connected"] or not unity_websocket_clients:
+        return {"status": "warning", "message": "연결된 Unity 클라이언트가 없습니다."}
+
+    try:
+        await broadcast_to_unity(message_data)
+        
+        logger.info(f"[Unity Message] 전송됨: {message_data}")
+        return {"status": "success", "sent_data": message_data}
+        
+    except Exception as e:
+        logger.error(f"[Unity Message] 전송 실패: {e}")
+        raise HTTPException(status_code=500, detail=f"전송 중 오류 발생: {str(e)}")
     
 # Vision Analysis Endpoint
 @app.post("/analyze/vision", response_model=VisionResponse, tags=["Analysis"])
@@ -724,7 +801,6 @@ async def analyze_vision(file: UploadFile = File(...)):
 async def synthesize_text(request: TextRequest):
     """
     텍스트를 입력받아 TTS 음성 합성 결과를 반환합니다.
-    (비동기 처리로 성능 향상)
 
     Args:
         request (TextRequest): 합성할 텍스트
@@ -749,7 +825,7 @@ async def synthesize_text(request: TextRequest):
 @app.post("/synthesize/parallel", response_model=SynthesizeResponse, tags=["Synthesis"])
 async def synthesize_text_parallel(request: TextRequest):
     """
-    텍스트를 입력받아 병렬 처리로 TTS 음성 합성 (긴 텍스트에 효과적)
+    텍스트를 입력받아 병렬 처리로 TTS 음성 합성
 
     Args:
         request (TextRequest): 합성할 텍스트
@@ -813,18 +889,178 @@ def generate_text(request: LLMRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"[L.U.N.A. LLM] 생성 중 오류 발생: {str(e)}")
     
+# Unity 브로드캐스트 헬퍼 함수
+async def broadcast_to_unity(response_data: dict):
+    """연결된 모든 Unity 클라이언트에게 응답을 브로드캐스트합니다."""
+    if not unity_websocket_clients:
+        return
+    
+    disconnected = []
+    for client in unity_websocket_clients:
+        try:
+            await client.send_json(response_data)
+            logger.info(f"[L.U.N.A.] Unity 클라이언트로 응답 전송 완료")
+        except Exception as e:
+            logger.warning(f"[L.U.N.A.] Unity 클라이언트 전송 실패: {e}")
+            disconnected.append(client)
+    
+    # 연결이 끊어진 클라이언트 제거
+    for client in disconnected:
+        if client in unity_websocket_clients:
+            unity_websocket_clients.remove(client)
+            unity_connections["client_count"] = max(0, unity_connections["client_count"] - 1)
+            unity_connections["connected"] = unity_connections["client_count"] > 0
+
 # Interact Endpoint
 @app.post("/interact", response_model=InteractResponse, tags=["Interaction"])
-def interact(request: InteractRequest):
+async def interact(request: InteractRequest):
     if not interaction_service:
         raise HTTPException(status_code=503, detail="서비스가 아직 준비되지 않았습니다.")
     try:
-        return interaction_service.run(request.input, use_tools=request.use_tools)
+        # 동기 함수를 스레드풀에서 실행
+        import asyncio
+        loop = asyncio.get_event_loop()
+        response = await loop.run_in_executor(
+            None, 
+            lambda: interaction_service.run(request.input, use_tools=request.use_tools)
+        )
+        
+        # Unity 클라이언트에게 브로드캐스트
+        if unity_websocket_clients:
+            await broadcast_to_unity(response.model_dump())
+            logger.info(f"[L.U.N.A.] Unity {len(unity_websocket_clients)}개 클라이언트에 응답 브로드캐스트")
+        
+        return response
     except Exception as e:
         logger.error(f"[Interact] 상호작용 중 심각한 오류 발생: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="상호작용 처리 중 서버 오류 발생")
 
-# Streaming Interaction Endpoint (API 모드 전용)
+# Interact SSE Endpoint - 도구 실행 중 실시간 피드백
+@app.post("/interact/sse", tags=["Interaction"])
+async def interact_sse(request: InteractRequest):
+    """SSE 방식으로 도구 실행 중 실시간 피드백을 전송합니다."""
+    if not interaction_service:
+        raise HTTPException(status_code=503, detail="서비스가 아직 준비되지 않았습니다.")
+    
+    import asyncio
+    import queue
+    
+    async def sse_generator():
+        loop = asyncio.get_event_loop()
+        
+        try:
+            yield f"data: {json.dumps({'type': 'status', 'data': {'message': '생각 중...'}}, ensure_ascii=False)}\n\n"
+            
+            def run_interaction_no_tts():
+                return interaction_service.run(request.input, use_tools=request.use_tools, skip_tts_generation=True)
+            
+            text_future = loop.run_in_executor(None, run_interaction_no_tts)
+            
+            check_count = 0
+            while not text_future.done():
+                await asyncio.sleep(0.5)
+                check_count += 1
+                
+                if check_count == 4:
+                    yield f"data: {json.dumps({'type': 'status', 'data': {'message': '처리 중...'}}, ensure_ascii=False)}\n\n"
+                elif check_count == 10:  # 5초 후
+                    yield f"data: {json.dumps({'type': 'status', 'data': {'message': '도구 실행 중...'}}, ensure_ascii=False)}\n\n"
+                elif check_count == 20:  # 10초 후
+                    yield f"data: {json.dumps({'type': 'status', 'data': {'message': '거의 다 됐어...'}}, ensure_ascii=False)}\n\n"
+            
+            text_response_obj = await text_future
+            
+            text_response = {
+                "text": text_response_obj.text,
+                "emotion": text_response_obj.emotion,
+                "intent": text_response_obj.intent,
+                "style": text_response_obj.style,
+                "audio_url": ""
+            }
+            yield f"data: {json.dumps({'type': 'text', 'data': text_response}, ensure_ascii=False)}\n\n"
+            
+            async def generate_tts():
+                try:
+                    from utils.style_map import get_style_from_emotion
+                    
+                    def prepare_tts():
+                        ja_text = translator_service.translate(text_response_obj.text, "ko", "ja")
+                        style, style_weight = get_style_from_emotion(text_response_obj.emotion)
+                        return ja_text, style, style_weight
+                    
+                    ja_text, style, style_weight = await loop.run_in_executor(None, prepare_tts)
+                    
+                    tts_result = await tts_service.synthesize_async(
+                        text=ja_text,
+                        style=style,
+                        style_weight=style_weight
+                    )
+                    
+                    audio_url = tts_result.get("audio_url", "")
+                    return audio_url
+                except Exception as e:
+                    logger.error(f"[L.U.N.A.] TTS 생성 오류: {e}", exc_info=True)
+                    return None
+            
+            tts_task = asyncio.create_task(generate_tts())
+            
+            final_audio_url = ""
+            try:
+                final_audio_url = await asyncio.wait_for(tts_task, timeout=30.0)
+                
+                if final_audio_url and unity_websocket_clients:
+                    complete_response_for_unity = {
+                        "text": text_response_obj.text,
+                        "emotion": text_response_obj.emotion,
+                        "intent": text_response_obj.intent,
+                        "style": text_response_obj.style,
+                        "audio_url": final_audio_url
+                    }
+                    await broadcast_to_unity(complete_response_for_unity)
+                    logger.info(f"[L.U.N.A.] Unity {len(unity_websocket_clients)}개 클라이언트에 텍스트+오디오 함께 브로드캐스트 (동시 시작)")
+                
+                if final_audio_url:
+                    yield f"data: {json.dumps({'type': 'audio', 'data': {'audio_url': final_audio_url}}, ensure_ascii=False)}\n\n"
+            except asyncio.TimeoutError:
+                logger.warning("[L.U.N.A.] TTS 생성 타임아웃")
+                if unity_websocket_clients:
+                    text_only_response = {
+                        "text": text_response_obj.text,
+                        "emotion": text_response_obj.emotion,
+                        "intent": text_response_obj.intent,
+                        "style": text_response_obj.style,
+                        "audio_url": ""
+                    }
+                    await broadcast_to_unity(text_only_response)
+                    logger.info(f"[L.U.N.A.] Unity {len(unity_websocket_clients)}개 클라이언트에 텍스트만 브로드캐스트 (TTS 타임아웃)")
+            except Exception as e:
+                logger.error(f"[L.U.N.A.] TTS 생성 중 오류: {e}", exc_info=True)
+                if unity_websocket_clients:
+                    text_only_response = {
+                        "text": text_response_obj.text,
+                        "emotion": text_response_obj.emotion,
+                        "intent": text_response_obj.intent,
+                        "style": text_response_obj.style,
+                        "audio_url": ""
+                    }
+                    await broadcast_to_unity(text_only_response)
+            
+            final_response = {
+                "text": text_response_obj.text,
+                "emotion": text_response_obj.emotion,
+                "intent": text_response_obj.intent,
+                "style": text_response_obj.style,
+                "audio_url": final_audio_url or ""
+            }
+            yield f"data: {json.dumps({'type': 'result', 'data': final_response}, ensure_ascii=False)}\n\n"
+            yield "data: [DONE]\n\n"
+            
+        except Exception as e:
+            logger.error(f"[Interact SSE] 오류: {e}", exc_info=True)
+            yield f"data: {json.dumps({'type': 'error', 'data': {'message': str(e)}}, ensure_ascii=False)}\n\n"
+    
+    return StreamingResponse(sse_generator(), media_type="text/event-stream")
+
 @app.post("/interact/stream", tags=["Interaction"])
 async def interact_stream(request: InteractRequest):
     """스트리밍 방식으로 LLM 응답을 실시간 전송합니다 (API 모드만 지원)."""
@@ -840,22 +1076,20 @@ async def interact_stream(request: InteractRequest):
     try:
         
         async def stream_generator():
-            # 1. 감정 분석
-            emotion_result = interaction_service._analyze_emotion(request.input)
+            try:
+                emotion_result = emotion_service.predict(request.input) if emotion_service else {"neutral": 1.0}
+            except Exception as e:
+                logger.warning(f"[Interact Stream] 감정 분석 실패: {e}")
+                emotion_result = {"neutral": 1.0}
             yield f"data: {json.dumps({'type': 'emotion', 'data': emotion_result}, ensure_ascii=False)}\n\n"
             
-            # 2. 번역 (필요시)
-            translated = interaction_service._translate_if_needed(request.input)
-            if translated != request.input:
-                yield f"data: {json.dumps({'type': 'translation', 'data': translated}, ensure_ascii=False)}\n\n"
+            translated = request.input
             
-            # 3. 메모리 컨텍스트 로드
             messages = []
             if memory_service:
                 messages = memory_service.get_context_for_llm()
                 messages.append({"role": "user", "content": translated})
             
-            # 4. LLM 스트리밍 응답
             target = list(llm_service.get_available_targets())[0]
             stream_response = llm_service.generate(
                 target=target,
@@ -879,9 +1113,20 @@ async def interact_stream(request: InteractRequest):
                     
                     finish_reason = chunk["choices"][0].get("finish_reason")
                     if finish_reason == "stop":
-                        # 5. 메모리 저장
                         if memory_service:
-                            memory_service.add_entry(user_input=request.input, llm_response=full_response)
+                            memory_service.add_entry(user_input=request.input, assistant_response=full_response)
+                        
+                        if unity_websocket_clients:
+                            top_emotion = max(emotion_result, key=emotion_result.get) if emotion_result else "neutral"
+                            unity_response = {
+                                "text": full_response,
+                                "emotion": top_emotion,
+                                "intent": "stream",
+                                "style": "Neutral",
+                                "audio_url": ""
+                            }
+                            import asyncio
+                            asyncio.create_task(broadcast_to_unity(unity_response))
                         
                         yield f"data: {json.dumps({'type': 'complete', 'data': full_response}, ensure_ascii=False)}\n\n"
                         break
@@ -946,6 +1191,163 @@ def get_memory_summary():
     else:
         return {"summary": None, "message": "저장된 요약이 없습니다."}
 
+# ====================================================================
+# Core Memory (장기 기억) Endpoints
+# ====================================================================
+@app.get("/memory/core", tags=["Memory - Core"])
+def get_core_memories(category: str = None, min_importance: int = 1):
+    """장기 기억 목록을 조회합니다."""
+    if not memory_service:
+        raise HTTPException(status_code=503, detail="메모리 서비스가 준비되지 않았습니다.")
+    
+    memories = memory_service.get_core_memories(category=category, min_importance=min_importance)
+    return {
+        "memories": [m.model_dump() for m in memories],
+        "count": len(memories),
+        "categories": ["user_info", "preferences", "projects", "relationships", "facts"]
+    }
+
+class CoreMemoryCreate(BaseModel):
+    category: str
+    key: str
+    value: str
+    importance: int = 5
+    source: str = None
+
+@app.post("/memory/core", tags=["Memory - Core"])
+def add_core_memory(data: CoreMemoryCreate):
+    """장기 기억을 추가하거나 업데이트합니다."""
+    if not memory_service:
+        raise HTTPException(status_code=503, detail="메모리 서비스가 준비되지 않았습니다.")
+    
+    valid_categories = ["user_info", "preferences", "projects", "relationships", "facts"]
+    if data.category not in valid_categories:
+        raise HTTPException(status_code=400, detail=f"유효하지 않은 카테고리입니다. 가능한 값: {valid_categories}")
+    
+    if data.importance < 1 or data.importance > 10:
+        raise HTTPException(status_code=400, detail="중요도는 1-10 사이여야 합니다.")
+    
+    memory = memory_service.add_core_memory(
+        category=data.category,
+        key=data.key,
+        value=data.value,
+        importance=data.importance,
+        source=data.source
+    )
+    return {"status": "success", "memory": memory.model_dump()}
+
+@app.put("/memory/core/{memory_id}", tags=["Memory - Core"])
+def update_core_memory(memory_id: int, value: str = None, importance: int = None):
+    """장기 기억을 수정합니다."""
+    if not memory_service:
+        raise HTTPException(status_code=503, detail="메모리 서비스가 준비되지 않았습니다.")
+    
+    if importance is not None and (importance < 1 or importance > 10):
+        raise HTTPException(status_code=400, detail="중요도는 1-10 사이여야 합니다.")
+    
+    memory = memory_service.update_core_memory(memory_id, value=value, importance=importance)
+    if memory:
+        return {"status": "success", "memory": memory.model_dump()}
+    else:
+        raise HTTPException(status_code=404, detail="해당 메모리를 찾을 수 없습니다.")
+
+@app.delete("/memory/core/{memory_id}", tags=["Memory - Core"])
+def delete_core_memory_by_id(memory_id: int):
+    """ID로 장기 기억을 삭제합니다."""
+    if not memory_service:
+        raise HTTPException(status_code=503, detail="메모리 서비스가 준비되지 않았습니다.")
+    
+    success = memory_service.delete_core_memory_by_id(memory_id)
+    if success:
+        return {"status": "success", "message": "메모리가 삭제되었습니다."}
+    else:
+        raise HTTPException(status_code=404, detail="해당 메모리를 찾을 수 없습니다.")
+
+@app.delete("/memory/core/{category}/{key}", tags=["Memory - Core"])
+def delete_core_memory(category: str, key: str):
+    """장기 기억을 삭제합니다."""
+    if not memory_service:
+        raise HTTPException(status_code=503, detail="메모리 서비스가 준비되지 않았습니다.")
+    
+    success = memory_service.delete_core_memory(category, key)
+    if success:
+        return {"status": "success", "message": f"'{key}' 메모리가 삭제되었습니다."}
+    else:
+        raise HTTPException(status_code=404, detail="해당 메모리를 찾을 수 없습니다.")
+
+# ====================================================================
+# Working Memory (단기 기억) Endpoints
+# ====================================================================
+@app.get("/memory/working", tags=["Memory - Working"])
+def get_working_memories(topic: str = None, include_expired: bool = False):
+    """단기 기억 목록을 조회합니다."""
+    if not memory_service:
+        raise HTTPException(status_code=503, detail="메모리 서비스가 준비되지 않았습니다.")
+    
+    memories = memory_service.get_working_memories(topic=topic, include_expired=include_expired)
+    return {
+        "memories": [m.model_dump() for m in memories],
+        "count": len(memories)
+    }
+
+@app.post("/memory/working", tags=["Memory - Working"])
+def add_working_memory(
+    topic: str,
+    content: str,
+    importance: int = 3,
+    expires_days: int = 3
+):
+    """단기 기억을 추가합니다."""
+    if not memory_service:
+        raise HTTPException(status_code=503, detail="메모리 서비스가 준비되지 않았습니다.")
+    
+    if importance < 1 or importance > 10:
+        raise HTTPException(status_code=400, detail="중요도는 1-10 사이여야 합니다.")
+    
+    if expires_days < 1 or expires_days > 30:
+        raise HTTPException(status_code=400, detail="만료 기간은 1-30일 사이여야 합니다.")
+    
+    memory = memory_service.add_working_memory(
+        topic=topic,
+        content=content,
+        importance=importance,
+        expires_days=expires_days
+    )
+    return {"status": "success", "memory": memory.model_dump()}
+
+@app.post("/memory/working/{memory_id}/extend", tags=["Memory - Working"])
+def extend_working_memory(memory_id: int, days: int = 3):
+    """단기 기억의 만료 기간을 연장합니다."""
+    if not memory_service:
+        raise HTTPException(status_code=503, detail="메모리 서비스가 준비되지 않았습니다.")
+    
+    success = memory_service.extend_working_memory(memory_id, days)
+    if success:
+        return {"status": "success", "message": f"만료 기간이 {days}일 연장되었습니다."}
+    else:
+        raise HTTPException(status_code=404, detail="해당 메모리를 찾을 수 없습니다.")
+
+@app.delete("/memory/working/{memory_id}", tags=["Memory - Working"])
+def delete_working_memory(memory_id: int):
+    """단기 기억을 삭제합니다."""
+    if not memory_service:
+        raise HTTPException(status_code=503, detail="메모리 서비스가 준비되지 않았습니다.")
+    
+    success = memory_service.delete_working_memory(memory_id)
+    if success:
+        return {"status": "success", "message": "메모리가 삭제되었습니다."}
+    else:
+        raise HTTPException(status_code=404, detail="해당 메모리를 찾을 수 없습니다.")
+
+@app.delete("/memory/working/cleanup", tags=["Memory - Working"])
+def cleanup_working_memories():
+    """만료된 단기 기억을 정리합니다."""
+    if not memory_service:
+        raise HTTPException(status_code=503, detail="메모리 서비스가 준비되지 않았습니다.")
+    
+    deleted = memory_service.cleanup_expired_memories()
+    return {"status": "success", "deleted_count": deleted, "message": f"{deleted}개의 만료된 단기 기억이 삭제되었습니다."}
+
 # Cache Management Endpoints
 @app.get("/cache/stats", tags=["Cache"])
 def get_cache_stats():
@@ -1006,7 +1408,6 @@ def clear_tts_cache():
     }
 
 # ==================== Memory Management API ====================
-
 @app.get("/memory/conversations", tags=["Memory"])
 def get_conversations(
     user_id: str = "default",
@@ -1289,7 +1690,7 @@ def clear_memory(
     confirm: bool = False
 ):
     """
-    메모리 삭제 (주의!)
+    메모리 삭제
     
     Args:
         user_id: 사용자 ID
@@ -1341,10 +1742,8 @@ async def mcp_reload_servers():
     if not mcp_mgr:
         raise HTTPException(503, "MCP 매니저 준비 안됨")
     
-    # ExternalMCPManager 재로드
     await mcp_mgr.reload_and_apply()
     
-    # MCPToolManager 재로드 (도구 목록 재발견)
     if tool_mgr:
         await tool_mgr.reload()
     
@@ -1376,19 +1775,17 @@ async def mcp_call_tool(server_id: str, payload: ToolCallPayload):
     if not mgr:
         raise HTTPException(503, "MCP 매니저 준비 안됨")
     result = await mgr.call_tool(server_id, payload.name, payload.arguments)
-    # result는 MCP SDK의 통합 결과 모델. 그대로 반환(프론트에서 파싱)
     return {"server": server_id, "result": result}
 
 
 # ====================================================================
 #  MCP 설정 관리 엔드포인트 (실시간 추가/제거/활성화)
 # ====================================================================
-
 class MCPServerConfig(BaseModel):
     """MCP 서버 설정"""
     id: str
     transport: str = "stdio"
-    command: str = None  # 업데이트 시 선택적
+    command: str = None
     args: list = []
     cwd: str = None
     enabled: bool = True
@@ -1396,7 +1793,7 @@ class MCPServerConfig(BaseModel):
     env: dict = {}
     
     class Config:
-        extra = "allow"  # 추가 필드 허용
+        extra = "allow"
 
 @app.post("/mcp/external/config/add", tags=["MCP Config"])
 async def mcp_add_server(config: MCPServerConfig):
@@ -1420,7 +1817,6 @@ async def mcp_add_server(config: MCPServerConfig):
         raise HTTPException(503, "MCP 매니저 준비 안됨")
     
     try:
-        # 설정 파일 로드
         config_path = Path("config/mcp_servers.json")
         
         data = {}
@@ -1429,21 +1825,16 @@ async def mcp_add_server(config: MCPServerConfig):
         
         mcp_servers = data.get("mcpServers", {})
         
-        # 중복 체크
         if config.id in mcp_servers:
             raise HTTPException(400, f"서버 '{config.id}' 이미 존재")
         
-        # 새 서버 추가
         mcp_servers[config.id] = config.model_dump(exclude_unset=True)
         data["mcpServers"] = mcp_servers
         
-        # 설정 저장
         config_path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
         
-        # 설정 재로드
         await mgr.reload_and_apply()
         
-        # 도구 목록 재로드
         tool_mgr = getattr(_lifespan_ref, "tool_manager", None)
         if tool_mgr:
             await tool_mgr.reload()
@@ -1469,7 +1860,6 @@ async def mcp_remove_server(server_id: str):
         raise HTTPException(503, "MCP 매니저 준비 안됨")
     
     try:
-        # 설정 파일 로드
         config_path = Path("config/mcp_servers.json")
         
         if not config_path.exists():
@@ -1478,21 +1868,16 @@ async def mcp_remove_server(server_id: str):
         data = json.loads(config_path.read_text(encoding="utf-8"))
         mcp_servers = data.get("mcpServers", {})
         
-        # 해당 서버 확인
         if server_id not in mcp_servers:
             raise HTTPException(404, f"서버 '{server_id}' 없음")
         
-        # 제거
         del mcp_servers[server_id]
         data["mcpServers"] = mcp_servers
         
-        # 설정 저장
         config_path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
         
-        # 설정 재로드
         await mgr.reload_and_apply()
         
-        # 도구 목록 재로드
         tool_mgr = getattr(_lifespan_ref, "tool_manager", None)
         if tool_mgr:
             await tool_mgr.reload()
@@ -1525,7 +1910,7 @@ async def mcp_update_server(config: MCPServerConfig):
     
     try:
         logger.info(f"[MCP Config] 업데이트 요청: id={config.id}, 원본={config.dict()}")
-        # 설정 파일 로드
+
         config_path = Path("config/mcp_servers.json")
         
         if not config_path.exists():
@@ -1534,11 +1919,9 @@ async def mcp_update_server(config: MCPServerConfig):
         data = json.loads(config_path.read_text(encoding="utf-8"))
         mcp_servers = data.get("mcpServers", {})
         
-        # 해당 서버 확인
         if config.id not in mcp_servers:
             raise HTTPException(404, f"서버 '{config.id}' 없음")
         
-        # 기존 설정과 병합
         existing = mcp_servers[config.id]
         update_data = config.model_dump(exclude_unset=True)  # exclude_none 대신 exclude_unset 사용
         logger.debug(f"[MCP Config] 업데이트 요청: id={config.id}, 변경 데이터={update_data}")
@@ -1547,13 +1930,10 @@ async def mcp_update_server(config: MCPServerConfig):
         logger.debug(f"[MCP Config] 업데이트 후: id={config.id}, enabled={existing.get('enabled')}")
         data["mcpServers"] = mcp_servers
         
-        # 설정 저장
         config_path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
         
-        # 설정 재로드
         await mgr.reload_and_apply()
         
-        # 도구 목록 재로드
         tool_mgr = getattr(_lifespan_ref, "tool_manager", None)
         if tool_mgr:
             await tool_mgr.reload()
@@ -1570,7 +1950,6 @@ async def mcp_update_server(config: MCPServerConfig):
 # ====================================================================
 #  MCP URL 기반 로드 (웹에서 공유되는 MCP 파일 직접 로드)
 # ====================================================================
-
 class MCPURLConfig(BaseModel):
     """URL 기반 MCP 서버 설정"""
     id: str
@@ -1603,23 +1982,19 @@ async def mcp_add_server_from_url(config: MCPURLConfig):
         raise HTTPException(503, "MCP 매니저 준비 안됨")
     
     try:
-        # URL 유효성 확인
         if not config.url.startswith(("http://", "https://")):
             raise HTTPException(400, "유효한 URL을 입력하세요 (http:// 또는 https://)")
         
-        # 임시 디렉토리 생성
         temp_dir = Path(tempfile.mkdtemp(prefix=f"mcp_{config.id}_"))
         
         logger.info(f"[MCP URL] 다운로드 시작: {config.url}")
         
-        # URL에서 파일 다운로드
         try:
             urllib.request.urlretrieve(config.url, temp_dir / "server.py")
         except Exception as e:
             shutil.rmtree(temp_dir)
             raise HTTPException(400, f"파일 다운로드 실패: {e}")
         
-        # 설정 파일에 추가
         config_path = Path("config/mcp_servers.json")
         data = {}
         if config_path.exists():
@@ -1627,12 +2002,10 @@ async def mcp_add_server_from_url(config: MCPURLConfig):
         
         servers = data.get("servers", [])
         
-        # 중복 체크
         if any(s["id"] == config.id for s in servers):
             shutil.rmtree(temp_dir)
             raise HTTPException(400, f"서버 '{config.id}' 이미 존재")
         
-        # 새 서버 추가
         new_server = {
             "id": config.id,
             "transport": "stdio",
@@ -1645,20 +2018,17 @@ async def mcp_add_server_from_url(config: MCPURLConfig):
             "source": {
                 "type": "url",
                 "url": config.url,
-                "downloaded_at": str(Path(__file__).resolve().parent / "main.py")  # 타임스탬프 용도
+                "downloaded_at": str(Path(__file__).resolve().parent / "main.py")
             }
         }
         
         servers.append(new_server)
         data["servers"] = servers
         
-        # 설정 저장
         config_path.write_text(json.dumps(data, indent=4, ensure_ascii=False), encoding="utf-8")
         
-        # 설정 재로드
         await mgr.reload_and_apply()
         
-        # 도구 목록 재로드
         tool_mgr = getattr(_lifespan_ref, "tool_manager", None)
         if tool_mgr:
             await tool_mgr.reload()
@@ -1719,14 +2089,11 @@ async def mcp_import_claude_format(config_file: MCPConfigFileUpload):
         servers = data.get("servers", [])
         added_count = 0
         
-        # mcpServers의 각 서버를 변환
         for server_id, server_config in config_file.mcpServers.items():
-            # 중복 체크
             if any(s["id"] == server_id for s in servers):
                 logger.warning(f"[MCP Import] 서버 '{server_id}' 이미 존재, 스킵")
                 continue
             
-            # Claude 포맷을 L.U.N.A 포맷으로 변환
             new_server = {
                 "id": server_id,
                 "transport": "stdio",
@@ -1750,14 +2117,11 @@ async def mcp_import_claude_format(config_file: MCPConfigFileUpload):
         if added_count == 0:
             return {"status": "ok", "added": 0, "message": "추가할 새 서버가 없습니다"}
         
-        # 설정 저장
         data["servers"] = servers
         config_path.write_text(json.dumps(data, indent=4, ensure_ascii=False), encoding="utf-8")
         
-        # 설정 재로드
         await mgr.reload_and_apply()
         
-        # 도구 목록 재로드
         tool_mgr = getattr(_lifespan_ref, "tool_manager", None)
         if tool_mgr:
             await tool_mgr.reload()
@@ -1778,20 +2142,19 @@ async def mcp_import_claude_format(config_file: MCPConfigFileUpload):
 # ====================================================================
 #  LLM + MCP 도구 연동
 # ====================================================================
-
 class LLMChatWithToolsRequest(BaseModel):
     """LLM 채팅 (도구 지원) 요청"""
     user_input: str
-    llm_provider: str = "gemini"  # "gemini", "claude", 등
+    llm_provider: str = "gemini"
     system_prompt: Optional[str] = None
     temperature: float = 0.7
     max_tokens: int = 2048
     use_tools: bool = True
-    tool_choice: str = "auto"  # "auto", "none", "required"
+    tool_choice: str = "auto"
 
 class LLMToolUse(BaseModel):
     """LLM이 호출한 도구"""
-    tool_id: str  # "echo/ping" 형식
+    tool_id: str
     server_id: str
     tool_name: str
     arguments: dict
@@ -1801,7 +2164,7 @@ class LLMToolUse(BaseModel):
 class LLMChatWithToolsResponse(BaseModel):
     """LLM 채팅 (도구 지원) 응답"""
     success: bool
-    content: str  # 최종 응답
+    content: str
     tool_calls: List[LLMToolUse] = []
     usage: Optional[dict] = None
 
@@ -1829,7 +2192,6 @@ async def llm_chat_with_tools(request: LLMChatWithToolsRequest) -> LLMChatWithTo
         raise HTTPException(503, "LLM 서비스 준비 안됨")
     
     if not tool_mgr or not request.use_tools:
-        # 도구 없이 일반 채팅
         try:
             response = llm_svc.generate(
                 target=request.llm_provider,
@@ -1853,7 +2215,6 @@ async def llm_chat_with_tools(request: LLMChatWithToolsRequest) -> LLMChatWithTo
             logger.error(f"[LLM Chat] 생성 실패: {e}")
             raise HTTPException(500, str(e))
     
-    # 도구 사용 모드
     try:
         tool_list = tool_mgr.get_tool_list()
         tools_schema = []
@@ -1869,11 +2230,8 @@ async def llm_chat_with_tools(request: LLMChatWithToolsRequest) -> LLMChatWithTo
 When the user asks you to use a tool, call it using the provided tool schema.
 Always use tool calls when appropriate to help the user."""
         
-        # LLM에 도구 정보와 함께 요청
         logger.info(f"[LLM Chat] 도구 사용 모드: {len(tools_schema)}개 도구 제공")
         
-        # Gemini API의 경우 tool_choice 및 tools 파라미터 사용
-        # 현재는 간단히 프롬프트에 도구 정보를 포함
         tool_info_str = "Available tools:\n"
         for tool in tools_schema:
             tool_info_str += f"- {tool['name']}: {tool['description']}\n"
@@ -1893,12 +2251,11 @@ Always use tool calls when appropriate to help the user."""
         else:
             content = str(response)
         
-        # 응답에서 도구 호출 추출 및 실행
         tool_calls = []
         
-        # 간단한 도구 호출 패턴 인식 (예: "사용 도구: echo/ping with argument: 'test'")
-        # 더 정교한 파싱은 LLM 응답 형식에 따라 구현 필요
         import re
+        
+        # TODO: 구조 변경
         tool_pattern = r"([\w-]+/[\w-]+)\s*\(?([^)]*)\)?"
         matches = re.findall(tool_pattern, content)
         
@@ -1906,20 +2263,15 @@ Always use tool calls when appropriate to help the user."""
             tool_id = match[0]
             args_str = match[1]
             
-            # tool_id에서 server_id와 tool_name 추출
             if "/" in tool_id:
                 server_id, tool_name = tool_id.split("/", 1)
                 
-                # 도구 실행
                 try:
-                    # 인자 파싱 (간단한 방식)
                     arguments = {}
                     if args_str:
-                        # JSON 형식 시도
                         try:
                             arguments = json.loads(args_str)
                         except:
-                            # 간단한 key=value 파싱
                             for pair in args_str.split(","):
                                 if "=" in pair:
                                     k, v = pair.split("=", 1)

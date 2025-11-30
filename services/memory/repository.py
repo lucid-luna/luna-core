@@ -15,7 +15,11 @@ from .models import (
     SummaryCreate,
     SummaryResponse,
     ConversationSearchRequest,
-    MemoryStats
+    MemoryStats,
+    CoreMemoryCreate,
+    CoreMemoryResponse,
+    WorkingMemoryCreate,
+    WorkingMemoryResponse
 )
 
 
@@ -215,7 +219,7 @@ class MemoryRepository:
         before_date: Optional[datetime] = None
     ) -> int:
         """
-        조건에 맞는 대화 일괄 삭제
+        조건에 맞는 대화 일괄 삭제 (요약도 함께 삭제)
         
         Args:
             user_id: 사용자 ID
@@ -223,25 +227,40 @@ class MemoryRepository:
             before_date: 기준 날짜 (이전 것들 삭제)
             
         Returns:
-            int: 삭제된 개수
+            int: 삭제된 대화 개수
         """
         with self.db.get_cursor() as cursor:
-            query = "DELETE FROM conversations WHERE 1=1"
+            # 먼저 요약 삭제 (FOREIGN KEY 제약 조건 해결)
+            summary_query = "DELETE FROM summaries WHERE 1=1"
             params = []
             
             if user_id:
-                query += " AND user_id = ?"
+                summary_query += " AND user_id = ?"
                 params.append(user_id)
             
             if session_id:
-                query += " AND session_id = ?"
+                summary_query += " AND session_id = ?"
+                params.append(session_id)
+            
+            cursor.execute(summary_query, params)
+            
+            # 대화 삭제
+            conv_query = "DELETE FROM conversations WHERE 1=1"
+            params = []
+            
+            if user_id:
+                conv_query += " AND user_id = ?"
+                params.append(user_id)
+            
+            if session_id:
+                conv_query += " AND session_id = ?"
                 params.append(session_id)
             
             if before_date:
-                query += " AND timestamp < ?"
+                conv_query += " AND timestamp < ?"
                 params.append(before_date.isoformat())
             
-            cursor.execute(query, params)
+            cursor.execute(conv_query, params)
             return cursor.rowcount
         
     def create_summary(self, summary: SummaryCreate) -> SummaryResponse:
@@ -497,5 +516,295 @@ class MemoryRepository:
             summarized_turns=row['summarized_turns'],
             start_conversation_id=row['start_conversation_id'],
             end_conversation_id=row['end_conversation_id'],
+            created_at=datetime.fromisoformat(row['created_at'])
+        )
+
+    # ====================================================================
+    #  장기 메모리 (Core Memory) CRUD
+    # ====================================================================
+    
+    def create_or_update_core_memory(self, memory: CoreMemoryCreate) -> CoreMemoryResponse:
+        """
+        장기 메모리 생성 또는 업데이트 (UPSERT)
+        
+        Args:
+            memory: 장기 메모리 데이터
+            
+        Returns:
+            CoreMemoryResponse: 생성/업데이트된 메모리
+        """
+        metadata_json = json.dumps(memory.metadata) if memory.metadata else None
+        
+        with self.db.get_cursor() as cursor:
+            cursor.execute("""
+                INSERT INTO core_memories (user_id, category, key, value, importance, source, metadata)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(user_id, category, key) DO UPDATE SET
+                    value = excluded.value,
+                    importance = excluded.importance,
+                    source = excluded.source,
+                    metadata = excluded.metadata,
+                    updated_at = CURRENT_TIMESTAMP
+            """, (
+                memory.user_id,
+                memory.category,
+                memory.key,
+                memory.value,
+                memory.importance,
+                memory.source,
+                metadata_json
+            ))
+            
+            # 방금 삽입/업데이트한 레코드 조회
+            cursor.execute("""
+                SELECT * FROM core_memories 
+                WHERE user_id = ? AND category = ? AND key = ?
+            """, (memory.user_id, memory.category, memory.key))
+            
+            row = cursor.fetchone()
+            return self._row_to_core_memory(row)
+    
+    def get_core_memories(
+        self,
+        user_id: str,
+        category: Optional[str] = None,
+        min_importance: int = 1
+    ) -> List[CoreMemoryResponse]:
+        """
+        장기 메모리 조회
+        
+        Args:
+            user_id: 사용자 ID
+            category: 카테고리 필터 (선택)
+            min_importance: 최소 중요도
+            
+        Returns:
+            List[CoreMemoryResponse]: 메모리 목록
+        """
+        with self.db.get_cursor() as cursor:
+            query = "SELECT * FROM core_memories WHERE user_id = ? AND importance >= ?"
+            params = [user_id, min_importance]
+            
+            if category:
+                query += " AND category = ?"
+                params.append(category)
+            
+            query += " ORDER BY importance DESC, updated_at DESC"
+            
+            cursor.execute(query, params)
+            rows = cursor.fetchall()
+            
+            return [self._row_to_core_memory(row) for row in rows]
+    
+    def get_core_memory_by_key(self, user_id: str, category: str, key: str) -> Optional[CoreMemoryResponse]:
+        """특정 키의 장기 메모리 조회"""
+        with self.db.get_cursor() as cursor:
+            cursor.execute("""
+                SELECT * FROM core_memories 
+                WHERE user_id = ? AND category = ? AND key = ?
+            """, (user_id, category, key))
+            
+            row = cursor.fetchone()
+            return self._row_to_core_memory(row) if row else None
+    
+    def delete_core_memory(self, user_id: str, category: str, key: str) -> bool:
+        """장기 메모리 삭제 (category/key로)"""
+        with self.db.get_cursor() as cursor:
+            cursor.execute("""
+                DELETE FROM core_memories 
+                WHERE user_id = ? AND category = ? AND key = ?
+            """, (user_id, category, key))
+            return cursor.rowcount > 0
+    
+    def delete_core_memory_by_id(self, memory_id: int) -> bool:
+        """장기 메모리 삭제 (ID로)"""
+        with self.db.get_cursor() as cursor:
+            cursor.execute("DELETE FROM core_memories WHERE id = ?", (memory_id,))
+            return cursor.rowcount > 0
+    
+    def update_core_memory(
+        self, 
+        memory_id: int, 
+        value: Optional[str] = None, 
+        importance: Optional[int] = None
+    ) -> Optional[CoreMemoryResponse]:
+        """장기 메모리 수정"""
+        with self.db.get_cursor() as cursor:
+            # 먼저 기존 메모리 조회
+            cursor.execute("SELECT * FROM core_memories WHERE id = ?", (memory_id,))
+            row = cursor.fetchone()
+            if not row:
+                return None
+            
+            # 업데이트할 필드 설정
+            updates = []
+            params = []
+            
+            if value is not None:
+                updates.append("value = ?")
+                params.append(value)
+            
+            if importance is not None:
+                updates.append("importance = ?")
+                params.append(importance)
+            
+            if not updates:
+                return self._row_to_core_memory(row)
+            
+            updates.append("updated_at = ?")
+            params.append(datetime.now().isoformat())
+            params.append(memory_id)
+            
+            cursor.execute(f"""
+                UPDATE core_memories SET {', '.join(updates)} WHERE id = ?
+            """, params)
+            
+            # 업데이트된 메모리 반환
+            cursor.execute("SELECT * FROM core_memories WHERE id = ?", (memory_id,))
+            row = cursor.fetchone()
+            return self._row_to_core_memory(row) if row else None
+    
+    def _row_to_core_memory(self, row) -> CoreMemoryResponse:
+        """Row를 CoreMemoryResponse로 변환"""
+        metadata = json.loads(row['metadata']) if row['metadata'] else None
+        
+        return CoreMemoryResponse(
+            id=row['id'],
+            user_id=row['user_id'],
+            category=row['category'],
+            key=row['key'],
+            value=row['value'],
+            importance=row['importance'],
+            source=row['source'],
+            metadata=metadata,
+            created_at=datetime.fromisoformat(row['created_at']),
+            updated_at=datetime.fromisoformat(row['updated_at'])
+        )
+
+    # ====================================================================
+    #  단기 메모리 (Working Memory) CRUD
+    # ====================================================================
+    
+    def create_working_memory(self, memory: WorkingMemoryCreate) -> WorkingMemoryResponse:
+        """
+        단기 메모리 생성
+        
+        Args:
+            memory: 단기 메모리 데이터
+            
+        Returns:
+            WorkingMemoryResponse: 생성된 메모리
+        """
+        from datetime import timedelta
+        
+        # 만료 시간 설정 (기본: 3일 후)
+        expires_at = memory.expires_at or (datetime.now() + timedelta(days=3))
+        metadata_json = json.dumps(memory.metadata) if memory.metadata else None
+        
+        with self.db.get_cursor() as cursor:
+            cursor.execute("""
+                INSERT INTO working_memories 
+                (user_id, session_id, topic, content, importance, expires_at, metadata)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (
+                memory.user_id,
+                memory.session_id,
+                memory.topic,
+                memory.content,
+                memory.importance,
+                expires_at.isoformat(),
+                metadata_json
+            ))
+            
+            memory_id = cursor.lastrowid
+            
+            cursor.execute("SELECT * FROM working_memories WHERE id = ?", (memory_id,))
+            row = cursor.fetchone()
+            return self._row_to_working_memory(row)
+    
+    def get_working_memories(
+        self,
+        user_id: str,
+        session_id: Optional[str] = None,
+        include_expired: bool = False,
+        topic: Optional[str] = None
+    ) -> List[WorkingMemoryResponse]:
+        """
+        단기 메모리 조회
+        
+        Args:
+            user_id: 사용자 ID
+            session_id: 세션 ID (선택)
+            include_expired: 만료된 것도 포함
+            topic: 주제 필터 (선택)
+            
+        Returns:
+            List[WorkingMemoryResponse]: 메모리 목록
+        """
+        with self.db.get_cursor() as cursor:
+            query = "SELECT * FROM working_memories WHERE user_id = ?"
+            params = [user_id]
+            
+            if session_id:
+                query += " AND session_id = ?"
+                params.append(session_id)
+            
+            if not include_expired:
+                query += " AND expires_at > ?"
+                params.append(datetime.now().isoformat())
+            
+            if topic:
+                query += " AND topic LIKE ?"
+                params.append(f"%{topic}%")
+            
+            query += " ORDER BY importance DESC, created_at DESC"
+            
+            cursor.execute(query, params)
+            rows = cursor.fetchall()
+            
+            return [self._row_to_working_memory(row) for row in rows]
+    
+    def delete_expired_working_memories(self) -> int:
+        """만료된 단기 메모리 삭제"""
+        with self.db.get_cursor() as cursor:
+            cursor.execute("""
+                DELETE FROM working_memories WHERE expires_at < ?
+            """, (datetime.now().isoformat(),))
+            return cursor.rowcount
+    
+    def delete_working_memory(self, memory_id: int) -> bool:
+        """특정 단기 메모리 삭제"""
+        with self.db.get_cursor() as cursor:
+            cursor.execute("DELETE FROM working_memories WHERE id = ?", (memory_id,))
+            return cursor.rowcount > 0
+    
+    def extend_working_memory(self, memory_id: int, days: int = 3) -> bool:
+        """단기 메모리 만료 시간 연장"""
+        from datetime import timedelta
+        
+        new_expires = datetime.now() + timedelta(days=days)
+        
+        with self.db.get_cursor() as cursor:
+            cursor.execute("""
+                UPDATE working_memories SET expires_at = ? WHERE id = ?
+            """, (new_expires.isoformat(), memory_id))
+            return cursor.rowcount > 0
+    
+    def _row_to_working_memory(self, row) -> WorkingMemoryResponse:
+        """Row를 WorkingMemoryResponse로 변환"""
+        metadata = json.loads(row['metadata']) if row['metadata'] else None
+        expires_at = datetime.fromisoformat(row['expires_at'])
+        is_expired = expires_at < datetime.now()
+        
+        return WorkingMemoryResponse(
+            id=row['id'],
+            user_id=row['user_id'],
+            session_id=row['session_id'],
+            topic=row['topic'],
+            content=row['content'],
+            importance=row['importance'],
+            expires_at=expires_at,
+            is_expired=is_expired,
+            metadata=metadata,
             created_at=datetime.fromisoformat(row['created_at'])
         )

@@ -14,7 +14,12 @@ from .models import (
     ConversationResponse,
     SummaryCreate,
     SummaryResponse,
-    LLMContext
+    LLMContext,
+    CoreMemoryCreate,
+    CoreMemoryResponse,
+    WorkingMemoryCreate,
+    WorkingMemoryResponse,
+    CoreMemoryCategory
 )
 from .token_utils import estimate_tokens_for_messages, estimate_tokens_for_text
 
@@ -95,8 +100,59 @@ class MemoryService:
         
         self.repository.create_conversation(conv)
         
+        # 만료된 단기 메모리 정리 (10번째 대화마다)
+        stats = self.repository.get_stats(self.user_id, self.session_id)
+        if stats.total_conversations % 10 == 0:
+            self.cleanup_expired_memories()
+        
+        # 중요 정보 패턴 감지 시에만 메모리 추출 (백그라운드로 실행하여 응답 지연 방지)
+        if self.llm_service and self._should_extract_memory(user_input):
+            import threading
+            def extract_in_background():
+                try:
+                    self.extract_and_store_memories(user_input, assistant_response)
+                except Exception as e:
+                    print(f"[MemoryService] 메모리 추출 실패 (무시): {e}")
+            
+            thread = threading.Thread(target=extract_in_background, daemon=True)
+            thread.start()
+        
         if self.enable_auto_summary and self.llm_service:
             self._check_and_summarize()
+    
+    def _should_extract_memory(self, user_input: str) -> bool:
+        """
+        메모리 추출이 필요한지 키워드 패턴으로 판단
+        
+        Args:
+            user_input: 사용자 입력
+            
+        Returns:
+            bool: 추출 필요 여부
+        """
+        # 장기 메모리 트리거 패턴 (사용자 정보)
+        core_patterns = [
+            "내 이름", "나는 ", "내가 ", "저는 ", "제 이름",
+            "좋아하", "싫어하", "선호", "관심",
+            "직업", "일하", "회사", "학교",
+            "살고", "사는", "거주",
+            "기억해", "잊지마", "알아둬",
+        ]
+        
+        # 단기 메모리 트리거 패턴 (현재 작업)
+        working_patterns = [
+            "작업", "프로젝트", "만들", "개발",
+            "지금 ", "오늘 ", "요즘 ",
+            "하는 중", "하고 있", "진행",
+        ]
+        
+        input_lower = user_input.lower()
+        
+        for pattern in core_patterns + working_patterns:
+            if pattern in input_lower:
+                return True
+        
+        return False
     
     def get_context_for_llm(self, include_system_prompt: bool = False) -> List[Dict[str, str]]:
         """
@@ -412,3 +468,323 @@ class MemoryService:
         
         results, _ = self.repository.search_conversations(search)
         return results
+
+    # ====================================================================
+    #  장기 메모리 (Core Memory) API
+    # ====================================================================
+    
+    def add_core_memory(
+        self,
+        category: str,
+        key: str,
+        value: str,
+        importance: int = 5,
+        source: Optional[str] = None
+    ) -> CoreMemoryResponse:
+        """
+        장기 메모리 추가/업데이트
+        
+        Args:
+            category: 카테고리 (user_info, preferences, projects, relationships, facts)
+            key: 고유 키 (예: "name", "favorite_color")
+            value: 저장할 값
+            importance: 중요도 (1-10)
+            source: 출처 정보
+            
+        Returns:
+            CoreMemoryResponse: 저장된 메모리
+        """
+        memory = CoreMemoryCreate(
+            user_id=self.user_id,
+            category=category,
+            key=key,
+            value=value,
+            importance=importance,
+            source=source
+        )
+        return self.repository.create_or_update_core_memory(memory)
+    
+    def get_core_memories(
+        self,
+        category: Optional[str] = None,
+        min_importance: int = 1
+    ) -> List[CoreMemoryResponse]:
+        """
+        장기 메모리 조회
+        
+        Args:
+            category: 카테고리 필터 (선택)
+            min_importance: 최소 중요도
+            
+        Returns:
+            List[CoreMemoryResponse]: 메모리 목록
+        """
+        return self.repository.get_core_memories(
+            user_id=self.user_id,
+            category=category,
+            min_importance=min_importance
+        )
+    
+    def get_core_memory(self, category: str, key: str) -> Optional[CoreMemoryResponse]:
+        """특정 장기 메모리 조회"""
+        return self.repository.get_core_memory_by_key(self.user_id, category, key)
+    
+    def update_core_memory(
+        self, 
+        memory_id: int, 
+        value: Optional[str] = None, 
+        importance: Optional[int] = None
+    ) -> Optional[CoreMemoryResponse]:
+        """장기 메모리 수정"""
+        return self.repository.update_core_memory(memory_id, value=value, importance=importance)
+    
+    def delete_core_memory(self, category: str, key: str) -> bool:
+        """장기 메모리 삭제 (category/key로)"""
+        return self.repository.delete_core_memory(self.user_id, category, key)
+    
+    def delete_core_memory_by_id(self, memory_id: int) -> bool:
+        """장기 메모리 삭제 (ID로)"""
+        return self.repository.delete_core_memory_by_id(memory_id)
+    
+    def get_core_memories_for_context(self) -> str:
+        """
+        LLM 컨텍스트용 장기 메모리 텍스트 생성
+        
+        Returns:
+            str: 포맷된 장기 메모리 텍스트
+        """
+        memories = self.get_core_memories(min_importance=3)
+        
+        if not memories:
+            return ""
+        
+        sections = {}
+        for mem in memories:
+            if mem.category not in sections:
+                sections[mem.category] = []
+            sections[mem.category].append(f"- {mem.key}: {mem.value}")
+        
+        result = ["[사용자 정보 - 장기 기억]"]
+        
+        category_labels = {
+            "user_info": "기본 정보",
+            "preferences": "선호도",
+            "projects": "프로젝트",
+            "relationships": "관계",
+            "facts": "중요 사실"
+        }
+        
+        for cat, items in sections.items():
+            label = category_labels.get(cat, cat)
+            result.append(f"\n{label}:")
+            result.extend(items)
+        
+        return "\n".join(result)
+
+    # ====================================================================
+    #  단기 메모리 (Working Memory) API
+    # ====================================================================
+    
+    def add_working_memory(
+        self,
+        topic: str,
+        content: str,
+        importance: int = 3,
+        expires_days: int = 3
+    ) -> WorkingMemoryResponse:
+        """
+        단기 메모리 추가
+        
+        Args:
+            topic: 주제 (예: "노션 페이지 작업")
+            content: 내용
+            importance: 중요도 (1-10)
+            expires_days: 만료까지 일수 (기본: 3일)
+            
+        Returns:
+            WorkingMemoryResponse: 저장된 메모리
+        """
+        from datetime import timedelta
+        
+        expires_at = datetime.now() + timedelta(days=expires_days)
+        
+        memory = WorkingMemoryCreate(
+            user_id=self.user_id,
+            session_id=self.session_id,
+            topic=topic,
+            content=content,
+            importance=importance,
+            expires_at=expires_at
+        )
+        return self.repository.create_working_memory(memory)
+    
+    def get_working_memories(
+        self,
+        topic: Optional[str] = None,
+        include_expired: bool = False
+    ) -> List[WorkingMemoryResponse]:
+        """
+        단기 메모리 조회
+        
+        Args:
+            topic: 주제 필터 (선택)
+            include_expired: 만료된 것도 포함
+            
+        Returns:
+            List[WorkingMemoryResponse]: 메모리 목록
+        """
+        return self.repository.get_working_memories(
+            user_id=self.user_id,
+            session_id=self.session_id,
+            include_expired=include_expired,
+            topic=topic
+        )
+    
+    def cleanup_expired_memories(self) -> int:
+        """만료된 단기 메모리 정리"""
+        deleted = self.repository.delete_expired_working_memories()
+        if deleted > 0:
+            print(f"[MemoryService] 만료된 단기 메모리 {deleted}개 삭제")
+        return deleted
+    
+    def extend_working_memory(self, memory_id: int, days: int = 3) -> bool:
+        """단기 메모리 만료 연장"""
+        return self.repository.extend_working_memory(memory_id, days)
+    
+    def delete_working_memory(self, memory_id: int) -> bool:
+        """단기 메모리 삭제"""
+        return self.repository.delete_working_memory(memory_id)
+    
+    def get_working_memories_for_context(self) -> str:
+        """
+        LLM 컨텍스트용 단기 메모리 텍스트 생성
+        
+        Returns:
+            str: 포맷된 단기 메모리 텍스트
+        """
+        memories = self.get_working_memories(include_expired=False)
+        
+        if not memories:
+            return ""
+        
+        result = ["[최근 주제 - 단기 기억]"]
+        
+        for mem in memories:
+            days_left = (mem.expires_at - datetime.now()).days
+            result.append(f"- {mem.topic}: {mem.content} (유효: {days_left}일)")
+        
+        return "\n".join(result)
+
+    # ====================================================================
+    #  통합 컨텍스트 생성
+    # ====================================================================
+    
+    def get_full_context_for_llm(self) -> List[Dict[str, str]]:
+        """
+        장기/단기 메모리를 포함한 전체 LLM 컨텍스트 생성
+        
+        Returns:
+            List[Dict[str, str]]: OpenAI 형식 메시지 리스트
+        """
+        messages: List[Dict[str, str]] = []
+        
+        # 1. 장기 메모리 (사용자 정보)
+        core_context = self.get_core_memories_for_context()
+        if core_context:
+            messages.append({
+                "role": "system",
+                "content": core_context
+            })
+        
+        # 2. 단기 메모리 (최근 주제)
+        working_context = self.get_working_memories_for_context()
+        if working_context:
+            messages.append({
+                "role": "system",
+                "content": working_context
+            })
+        
+        # 3. 기존 대화 컨텍스트
+        conversation_context = self.get_context_for_llm()
+        messages.extend(conversation_context)
+        
+        return messages
+    
+    def extract_and_store_memories(self, user_input: str, assistant_response: str):
+        """
+        대화에서 중요 정보를 추출하여 메모리에 저장 (LLM 사용)
+        
+        Args:
+            user_input: 사용자 입력
+            assistant_response: 어시스턴트 응답
+        """
+        if not self.llm_service:
+            return
+        
+        prompt = f"""다음 대화에서 저장할 만한 중요한 정보가 있는지 분석해주세요.
+
+사용자: {user_input}
+어시스턴트: {assistant_response}
+
+다음 형식으로 JSON 응답해주세요:
+{{
+    "core_memories": [
+        {{"category": "user_info|preferences|projects|relationships|facts", "key": "키", "value": "값", "importance": 1-10}}
+    ],
+    "working_memories": [
+        {{"topic": "주제", "content": "내용", "importance": 1-10}}
+    ]
+}}
+
+저장할 정보가 없으면 빈 배열로 응답하세요.
+- 이름, 직업, 관심사 등 개인정보는 core_memories의 user_info로
+- 현재 작업 중인 것, 일시적 주제는 working_memories로
+- 중요하지 않은 일상 대화는 저장하지 마세요"""
+
+        try:
+            target = list(self.llm_service.get_available_targets())[0]
+            response = self.llm_service.generate(
+                target=target,
+                system_prompt="당신은 대화에서 중요 정보를 추출하는 분석가입니다. JSON만 응답하세요.",
+                user_prompt=prompt
+            )
+            
+            if isinstance(response, dict) and "choices" in response:
+                import json
+                content = response["choices"][0]["message"]["content"]
+                
+                # JSON 파싱
+                try:
+                    # ```json ... ``` 형식 처리
+                    if "```json" in content:
+                        content = content.split("```json")[1].split("```")[0]
+                    elif "```" in content:
+                        content = content.split("```")[1].split("```")[0]
+                    
+                    data = json.loads(content.strip())
+                    
+                    # 장기 메모리 저장
+                    for mem in data.get("core_memories", []):
+                        self.add_core_memory(
+                            category=mem["category"],
+                            key=mem["key"],
+                            value=mem["value"],
+                            importance=mem.get("importance", 5),
+                            source=f"conversation_{datetime.now().isoformat()}"
+                        )
+                        print(f"[MemoryService] 장기 메모리 저장: {mem['category']}/{mem['key']}")
+                    
+                    # 단기 메모리 저장
+                    for mem in data.get("working_memories", []):
+                        self.add_working_memory(
+                            topic=mem["topic"],
+                            content=mem["content"],
+                            importance=mem.get("importance", 3)
+                        )
+                        print(f"[MemoryService] 단기 메모리 저장: {mem['topic']}")
+                        
+                except json.JSONDecodeError:
+                    pass  # JSON 파싱 실패 시 무시
+                    
+        except Exception as e:
+            print(f"[MemoryService] 메모리 추출 중 오류: {e}")

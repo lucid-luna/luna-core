@@ -337,53 +337,77 @@ class LLMAPIService:
         if system_prompt:
             gen_config.system_instruction = system_prompt
 
+#         # 이전 버전 (도구 목록 주입)
+#         if tools:
+#             print("[L.U.N.A. LLM API] 도구 목록 주입 시작...")
+
+#             tool_list_lines = []
+#             for t in tools:
+#                 if not isinstance(t, dict):
+#                     continue
+#                 func = t.get("function", t)
+#                 server_id = (t.get("server_id") or t.get("server") or "").strip()
+#                 tool_name = (func.get("name") or func.get("tool_name") or "").strip()
+#                 desc = (func.get("description") or t.get("description") or "").strip()[:200]
+
+#                 input_schema = t.get("inputSchema") or func.get("inputSchema") or {}
+#                 properties = input_schema.get("properties", {}) if isinstance(input_schema, dict) else {}
+#                 required = input_schema.get("required", []) if isinstance(input_schema, dict) else []
+
+#                 if server_id and tool_name:
+#                     line = f"- `{server_id}/{tool_name}`: {desc}" if desc else f"- `{server_id}/{tool_name}`"
+#                     if required:
+#                         req_names = [r for r in required if r in properties]
+#                         if req_names:
+#                             line += f"\n  필수 매개변수: {', '.join(req_names)}"
+#                     tool_list_lines.append(line)
+
+#             tool_usage_instruction = """
+# [TOOLS] 아래는 현재 사용 가능한 MCP 도구 목록이다.
+
+# - 사용자의 요청이 실제 외부 동작(페이지/문서/리소스 생성·수정, 음악 재생·정지, 검색, 외부 저장 등)을 **명확히 요구**하고,
+#   그 목적과 의미가 일치하는 도구가 있을 때에만 해당 도구를 호출한다.
+# - 순수 대화, 감상, 의견, 설명, "어때?"처럼 평가를 묻는 질문에는 도구를 사용하지 않는다.
+# - 존재하지 않는 도구 ID를 새로 만들지 않는다.
+# - 도구 호출 형식 예시는 다음과 같다:
+#   `call:server_id/tool_name{"key": "value"}`
+# - 이전 대화에서 이미 실행된 도구 결과에 ID 등이 있다면, 같은 대상을 가리키는 "그거", "방금 만든 거" 등의 표현에 그 ID를 재사용한다.
+# - 컨텍스트에 정보가 없거나 여러 후보가 섞여 애매할 때만, 짧게 한 번 어떤 대상을 말하는지 확인한 뒤 도구를 호출한다.
+# """.strip()
+
+#             tools_block = "[사용 가능한 MCP 도구]\n" + "\n".join(tool_list_lines)
+#             gen_config.system_instruction = (
+#                 (gen_config.system_instruction or "") +
+#                 "\n\n" + tool_usage_instruction + "\n\n" + tools_block
+#             )
+
+#             print(f"[L.U.N.A. LLM API] ✅ 도구 {len(tools)}개 목록 주입 완료")
+#         else:
+#             print("[L.U.N.A. LLM API] 도구 없음, 목록 주입 생략")
+
+        # 최신 버전 (도구 스키마 주입)
         if tools:
-            print("[L.U.N.A. LLM API] 도구 목록 주입 시작...")
-
-            tool_list_lines = []
-            for t in tools:
-                if not isinstance(t, dict):
-                    continue
-                func = t.get("function", t)
-                server_id = (t.get("server_id") or t.get("server") or "").strip()
-                tool_name = (func.get("name") or func.get("tool_name") or "").strip()
-                desc = (func.get("description") or t.get("description") or "").strip()[:200]
-
-                input_schema = t.get("inputSchema") or func.get("inputSchema") or {}
-                properties = input_schema.get("properties", {}) if isinstance(input_schema, dict) else {}
-                required = input_schema.get("required", []) if isinstance(input_schema, dict) else []
-
-                if server_id and tool_name:
-                    line = f"- `{server_id}/{tool_name}`: {desc}" if desc else f"- `{server_id}/{tool_name}`"
-                    if required:
-                        req_names = [r for r in required if r in properties]
-                        if req_names:
-                            line += f"\n  필수 매개변수: {', '.join(req_names)}"
-                    tool_list_lines.append(line)
-
-            tool_usage_instruction = """
-[TOOLS] 아래는 현재 사용 가능한 MCP 도구 목록이다.
-
-- 사용자의 요청이 실제 외부 동작(페이지/문서/리소스 생성·수정, 음악 재생·정지, 검색, 외부 저장 등)을 **명확히 요구**하고,
-  그 목적과 의미가 일치하는 도구가 있을 때에만 해당 도구를 호출한다.
-- 순수 대화, 감상, 의견, 설명, "어때?"처럼 평가를 묻는 질문에는 도구를 사용하지 않는다.
-- 존재하지 않는 도구 ID를 새로 만들지 않는다.
-- 도구 호출 형식 예시는 다음과 같다:
-  `call:server_id/tool_name{"key": "value"}`
-- 이전 대화에서 이미 실행된 도구 결과에 ID 등이 있다면, 같은 대상을 가리키는 "그거", "방금 만든 거" 등의 표현에 그 ID를 재사용한다.
-- 컨텍스트에 정보가 없거나 여러 후보가 섞여 애매할 때만, 짧게 한 번 어떤 대상을 말하는지 확인한 뒤 도구를 호출한다.
-""".strip()
-
-            tools_block = "[사용 가능한 MCP 도구]\n" + "\n".join(tool_list_lines)
-            gen_config.system_instruction = (
-                (gen_config.system_instruction or "") +
-                "\n\n" + tool_usage_instruction + "\n\n" + tools_block
-            )
-
-            print(f"[L.U.N.A. LLM API] ✅ 도구 {len(tools)}개 목록 주입 완료")
+            function_declarations = []
+            
+            for tool in tools:
+                func = tool.get("function", tool)
+                
+                input_schema = func.get("inputSchema", {})
+                cleaned_schema = self._clean_schema_for_gemini(input_schema)
+                
+                function_declarations.append(
+                    gx.FunctionDeclaration(
+                        name=func.get("name", ""),
+                        description=func.get("description", ""),
+                        parameters=cleaned_schema
+                    )
+                )
+            
+            gen_config.tools = [gx.Tool(function_declarations=function_declarations)]
+            print(f"[L.U.N.A. LLM API] ✅ 도구 {len(tools)}개 스키마 주입 완료")
         else:
-            print("[L.U.N.A. LLM API] 도구 없음, 목록 주입 생략")
-
+            print("[L.U.N.A. LLM API] 도구 없음, 스키마 주입 생략")
+            
         api_kwargs: Dict[str, Any] = {
             "model": model_name,
             "contents": contents
