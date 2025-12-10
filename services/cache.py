@@ -48,7 +48,13 @@ class ResponseCache:
             with open(self.cache_file, 'r', encoding='utf-8') as f:
                 return json.load(f)
         except Exception as e:
-            print(f"[L.U.N.A. Cache] 캐시 로드 실패: {e}")
+            print(f"[L.U.N.A. Cache] 캐시 로드 실패, 초기화: {e}")
+            try:
+                backup = self.cache_file.with_suffix(".broken.json")
+                self.cache_file.rename(backup)
+                print(f"[L.U.N.A. Cache] 손상된 캐시 백업: {backup}")
+            except Exception:
+                pass
             return {}
     
     def _save_cache(self, cache: Dict[str, Any]):
@@ -140,13 +146,23 @@ class ResponseCache:
             for cached_key, entry in cache.items():
                 if self._is_expired(entry["timestamp"]):
                     continue
-                
+
+                entry_model = entry.get("model", "")
+                if model and entry_model and entry_model != model:
+                    continue
+
+                entry_ctx = entry.get("context_hash", "")
+                if (context_hash or entry_ctx) and (context_hash != entry_ctx):
+                    continue
                 cached_prompt = entry.get("prompt", "")
                 similarity = self._calculate_similarity(prompt, cached_prompt)
                 
                 if similarity >= self.similarity_threshold:
                     self.stats["hits"] += 1
-                    print(f"[L.U.N.A. Cache] 캐시 히트 (유사도: {similarity:.2f}): {cached_prompt[:50]}...")
+                    print(
+                        f"[L.U.N.A. Cache] 캐시 히트 (유사도: {similarity:.2f}): "
+                        f"{cached_prompt[:50]}..."
+                    )
                     return entry["response"]
         
         self.stats["misses"] += 1
@@ -176,6 +192,7 @@ class ResponseCache:
             "prompt": prompt,
             "response": response,
             "model": model,
+            "context_hash": context_hash,
             "timestamp": time.time()
         }
         
@@ -195,9 +212,6 @@ class ResponseCache:
     def get_stats(self) -> Dict[str, Any]:
         """
         캐시 통계 반환
-        
-        Returns:
-            Dict[str, Any]: 통계 정보
         """
         cache = self._load_cache()
         hit_rate = (

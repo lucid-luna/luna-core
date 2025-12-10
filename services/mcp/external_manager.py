@@ -128,10 +128,36 @@ class ExternalMCPManager:
         self.logger.info(f"[L.U.N.A. ExternalMCPManager] '{server_id}' 정리 완료")
 
     async def _hold_until_closed(self, session: ClientSession):
-        while True:
-            await asyncio.sleep(1)
-            if session is None:
-                break
+        """
+        세션이 살아있는 동안 태스크를 유지
+        """
+        import asyncio
+
+        try:
+            while True:
+                await asyncio.sleep(1)
+
+                closed = False
+                if hasattr(session, "closed"):
+                    attr = session.closed
+                    closed = attr() if callable(attr) else bool(attr)
+                elif hasattr(session, "is_closed"):
+                    attr = session.is_closed
+                    closed = attr() if callable(attr) else bool(attr)
+
+                if closed:
+                    if self.logger:
+                        self.logger.info(
+                            "[L.U.N.A. ExternalMCPManager] 세션이 종료 신호를 보냈습니다."
+                        )
+                    break
+
+        except asyncio.CancelledError:
+            if self.logger:
+                self.logger.info(
+                    "[L.U.N.A. ExternalMCPManager] 세션 유지 태스크 취소됨"
+                )
+            return
 
     async def stop_all(self):
         for task in list(self._client_tasks.values()):

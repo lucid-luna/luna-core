@@ -28,7 +28,7 @@ import torch
 import soundfile as sf
 from fastapi import HTTPException
 from utils.config import load_config_dict
-from utils.style_map import get_style_from_emotion, get_top_emotion
+from utils.style_map import get_style_from_emotion, get_top_emotion, get_style_from_scores
 from services.emotion import EmotionService
 from models.tts_model import TTSModelHolder
 
@@ -397,13 +397,18 @@ class TTSService:
         top_emotion = None
         if use_emotion_analysis and (style is None or style_weight is None):
             emotion_scores = self.emotion_service.predict(text)
-            top_emotion = get_top_emotion(emotion_scores)
-        
-        if style is None or style_weight is None:
-            if top_emotion:
-                style, style_weight = get_style_from_emotion(top_emotion)
+            print(f"[TTS] 감정 분석 결과: {emotion_scores}")
+            
+            if emotion_scores:
+                style, style_weight = get_style_from_scores(emotion_scores)
+                top_emotion = get_top_emotion(emotion_scores)
             else:
                 style, style_weight = "Neutral", 1.0
+        
+        if style is None or style_weight is None:
+            style, style_weight = "Neutral", 1.0
+        
+        print(f"[TTS] 최종 스타일: {style}, 강도: {style_weight}")
         
         # 캐시 확인
         if use_cache and self.cache:

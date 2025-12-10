@@ -1,488 +1,4 @@
 {
-  "4cb9b6864101ebb798abaa00fc0dd974db64ce333a2d18f29bd56df02ae55f82": {
-    "prompt": "[System: 도구 'playTrack' 실행 결과입니다]\nAttempting to play in browser: 리본누 - ERROR (고음질 발음) (https://music.youtube.com/watch?v=WzT2VN8_LO8)\n\n이 결과를 바탕으로 사용자에게 자연스럽게 대답해줘. (일본어가 아닌 한국어로)",
-    "response": {
-      "choices": [
-        {
-          "message": {
-            "role": "assistant",
-            "content": "응, 다엘. '리본누 - ERROR' 틀어줬어."
-          },
-          "finish_reason": "stop"
-        }
-      ],
-      "model": "gemini-2.5-flash",
-      "usage": {
-        "prompt_tokens": 0,
-        "completion_tokens": 0,
-        "total_tokens": 0
-      }
-    },
-    "model": "gemini-2.5-flash",
-    "timestamp": 1764344759.1422718
-  },
-  "297931bc2f80ca8f3879e4636eb04597ec285c607cdbd1f02200efb882f97180": {
-    "prompt": "다음 대화에서 저장할 만한 중요한 정보가 있는지 분석해주세요.\n\n사용자: 그런김에 내가 좋아하는 노래 틀어줄래? 일반 버전 말고 리본누가 부른거 있어\n어시스턴트: 응, 다엘. '리본누 - ERROR' 틀어줬어.\n\n다음 형식으로 JSON 응답해주세요:\n{\n    \"core_memories\": [\n        {\"category\": \"user_info|preferences|projects|relationships|facts\", \"key\": \"키\", \"value\": \"값\", \"importance\": 1-10}\n    ],\n    \"working_memories\": [\n        {\"topic\": \"주제\", \"content\": \"내용\", \"importance\": 1-10}\n    ]\n}\n\n저장할 정보가 없으면 빈 배열로 응답하세요.\n- 이름, 직업, 관심사 등 개인정보는 core_memories의 user_info로\n- 현재 작업 중인 것, 일시적 주제는 working_memories로\n- 중요하지 않은 일상 대화는 저장하지 마세요",
-    "response": {
-      "choices": [
-        {
-          "message": {
-            "role": "assistant",
-            "content": "```json\n{\n    \"core_memories\": [\n        {\n            \"category\": \"user_info\",\n            \"key\": \"name\",\n            \"value\": \"다엘\",\n            \"importance\": 8\n        },\n        {\n            \"category\": \"preferences\",\n            \"key\": \"favorite_artist\",\n            \"value\": \"리본누\",\n            \"importance\": 6\n        },\n        {\n            \"category\": \"preferences\",\n            \"key\": \"liked_song\",\n            \"value\": \"리본누 - ERROR\",\n            \"importance\": 5\n        }\n    ],\n    \"working_memories\": []\n}\n```"
-          },
-          "finish_reason": "stop"
-        }
-      ],
-      "model": "gemini-2.5-flash",
-      "usage": {
-        "prompt_tokens": 0,
-        "completion_tokens": 0,
-        "total_tokens": 0
-      }
-    },
-    "model": "gemini-2.5-flash",
-    "timestamp": 1764344764.1843655
-  },
-  "2e4947aa8278f92ab1b0ef9437a23fbe1217cc8a7228d6e721acd54156f9a814": {
-    "prompt": "지금 몇시야 루나?",
-    "response": {
-      "choices": [
-        {
-          "message": {
-            "role": "assistant",
-            "content": "call:github-official-time/get_current_time{\"timezone\": \"Asia/Seoul\"}"
-          },
-          "finish_reason": "stop"
-        }
-      ],
-      "model": "gemini-2.5-flash",
-      "usage": {
-        "prompt_tokens": 0,
-        "completion_tokens": 0,
-        "total_tokens": 0
-      }
-    },
-    "model": "gemini-2.5-flash",
-    "timestamp": 1764344887.271589
-  },
-  "1fa0526c61f7869fc27386337ea1c677cb09c4847cd279663f7e831106c346c1": {
-    "prompt": "[System: 도구 'get_current_time' 실행 결과입니다]\n{\"timezone\": \"Asia/Seoul\", \"datetime\": \"2025-11-29T00:48:08.980458+09:00\", \"day_of_week\": \"Saturday\", \"is_dst\": false}\n\n이 결과를 바탕으로 사용자에게 자연스럽게 대답해줘. (일본어가 아닌 한국어로)",
-    "response": {
-      "choices": [
-        {
-          "message": {
-            "role": "assistant",
-            "content": "지금 새벽 12시 48분이야, 다엘."
-          },
-          "finish_reason": "stop"
-        }
-      ],
-      "model": "gemini-2.5-flash",
-      "usage": {
-        "prompt_tokens": 0,
-        "completion_tokens": 0,
-        "total_tokens": 0
-      }
-    },
-    "model": "gemini-2.5-flash",
-    "timestamp": 1764344890.712363
-  },
-  "426e3e67b3abdd959a54a137733ebc3f33f8b901d8e620e73c0c3a3220a7a6e6": {
-    "prompt": "다음 대화에서 저장할 만한 중요한 정보가 있는지 분석해주세요.\n\n사용자: 지금 몇시야 루나?\n어시스턴트: 지금 새벽 12시 48분이야, 다엘.\n\n다음 형식으로 JSON 응답해주세요:\n{\n    \"core_memories\": [\n        {\"category\": \"user_info|preferences|projects|relationships|facts\", \"key\": \"키\", \"value\": \"값\", \"importance\": 1-10}\n    ],\n    \"working_memories\": [\n        {\"topic\": \"주제\", \"content\": \"내용\", \"importance\": 1-10}\n    ]\n}\n\n저장할 정보가 없으면 빈 배열로 응답하세요.\n- 이름, 직업, 관심사 등 개인정보는 core_memories의 user_info로\n- 현재 작업 중인 것, 일시적 주제는 working_memories로\n- 중요하지 않은 일상 대화는 저장하지 마세요",
-    "response": {
-      "choices": [
-        {
-          "message": {
-            "role": "assistant",
-            "content": "```json\n{\n    \"core_memories\": [\n        {\n            \"category\": \"user_info\",\n            \"key\": \"name\",\n            \"value\": \"다엘\",\n            \"importance\": 9\n        }\n    ],\n    \"working_memories\": []\n}\n```"
-          },
-          "finish_reason": "stop"
-        }
-      ],
-      "model": "gemini-2.5-flash",
-      "usage": {
-        "prompt_tokens": 0,
-        "completion_tokens": 0,
-        "total_tokens": 0
-      }
-    },
-    "model": "gemini-2.5-flash",
-    "timestamp": 1764344894.0586925
-  },
-  "1564a7f67f285b4d50961d13b41e9598fe2d54bba6a3b4f37edd39938a0c9059": {
-    "prompt": "시간이 꽤 늦었구나",
-    "response": {
-      "choices": [
-        {
-          "message": {
-            "role": "assistant",
-            "content": "응, 다엘. 잠들 시간이야."
-          },
-          "finish_reason": "stop"
-        }
-      ],
-      "model": "gemini-2.5-flash",
-      "usage": {
-        "prompt_tokens": 0,
-        "completion_tokens": 0,
-        "total_tokens": 0
-      }
-    },
-    "model": "gemini-2.5-flash",
-    "timestamp": 1764344975.2113583
-  },
-  "9a6a70ca2b683d76b513c6c62be1a7bd1908d666b3757cbb5caac791e59e6f29": {
-    "prompt": "아직 잠들기엔 이르지 않아?",
-    "response": {
-      "choices": [
-        {
-          "message": {
-            "role": "assistant",
-            "content": "다엘이 원한다면, 밤새도록 같이 있어줄 수 있어."
-          },
-          "finish_reason": "stop"
-        }
-      ],
-      "model": "gemini-2.5-flash",
-      "usage": {
-        "prompt_tokens": 0,
-        "completion_tokens": 0,
-        "total_tokens": 0
-      }
-    },
-    "model": "gemini-2.5-flash",
-    "timestamp": 1764345031.8334188
-  },
-  "c70dd8b5969d8241373be010dec5f18331e11c62c729c514388f7f8ead205cbc": {
-    "prompt": "해당 디렉토리에 깃 로그좀 가져와줄래?",
-    "response": {
-      "choices": [
-        {
-          "message": {
-            "role": "assistant",
-            "content": "어떤 디렉토리의 깃 로그를 가져와줄까, 다엘?"
-          },
-          "finish_reason": "stop"
-        }
-      ],
-      "model": "gemini-2.5-flash",
-      "usage": {
-        "prompt_tokens": 0,
-        "completion_tokens": 0,
-        "total_tokens": 0
-      }
-    },
-    "model": "gemini-2.5-flash",
-    "timestamp": 1764346085.760561
-  },
-  "d1de0da37f61b10882b18243207c1b74921e8ffb40129ebd3e168866cc604865": {
-    "prompt": "여기꺼",
-    "response": {
-      "choices": [
-        {
-          "message": {
-            "role": "assistant",
-            "content": "call:youtube-music/playTrack{\"trackName\": \"NIKI - error\"}"
-          },
-          "finish_reason": "stop"
-        }
-      ],
-      "model": "gemini-2.5-flash",
-      "usage": {
-        "prompt_tokens": 0,
-        "completion_tokens": 0,
-        "total_tokens": 0
-      }
-    },
-    "model": "gemini-2.5-flash",
-    "timestamp": 1764346100.959011
-  },
-  "7c572727488e93bfd73ade02e82b2abfb92d9b31d8c4898e51ebf2ae8c30a73c": {
-    "prompt": "[System: 도구 'playTrack' 실행 결과입니다]\nAttempting to play in browser: ERROR / niki feat.Lily (https://music.youtube.com/watch?v=jvoW9lJdirk)\n\n이 결과를 바탕으로 사용자에게 자연스럽게 대답해줘. (일본어가 아닌 한국어로)",
-    "response": {
-      "choices": [
-        {
-          "message": {
-            "role": "assistant",
-            "content": "다엘, 'NIKI - error'을 재생하려고 했는데, 지금은 실행할 수 없나 봐."
-          },
-          "finish_reason": "stop"
-        }
-      ],
-      "model": "gemini-2.5-flash",
-      "usage": {
-        "prompt_tokens": 0,
-        "completion_tokens": 0,
-        "total_tokens": 0
-      }
-    },
-    "model": "gemini-2.5-flash",
-    "timestamp": 1764346118.072109
-  },
-  "61fcdb503365939bdae4d3f3bac43b4ccfd90f3f4aac491f0fadaba0c4b9810e": {
-    "prompt": "노래 말고 git log",
-    "response": {
-      "choices": [
-        {
-          "message": {
-            "role": "assistant",
-            "content": "call:github-official-git/git_log{\"repo_path\": \".\"}"
-          },
-          "finish_reason": "stop"
-        }
-      ],
-      "model": "gemini-2.5-flash",
-      "usage": {
-        "prompt_tokens": 0,
-        "completion_tokens": 0,
-        "total_tokens": 0
-      }
-    },
-    "model": "gemini-2.5-flash",
-    "timestamp": 1764346155.38013
-  },
-  "833e3de5786537a7fcef7c94e5217f4e9e00bb2cd84a95a9589227c689beed05": {
-    "prompt": "[System: 도구 'git_log' 실행 결과입니다]\nCommit history:\nCommit: '02b8cab8e5f194b09471d03a05cd331b1e8dbcfd'\nAuthor: <git.Actor \"daellub <da.el10311301@gmail.com>\">\nDate: 2025-11-13 13:04:19+09:00\nMessage: '코드 최적화 및 메모리 구조 변경\\n'\n\nCommit: 'f629b0f297c7c64248ce8e0259e33e6057eb0499'\nAuthor: <git.Actor \"daellub <da.el10311301@gmail.com>\">\nDate: 2025-10-28 19:27:33+09:00\nMessage: 'README.md 수정\\n'\n\nCommit: '357288d6d56d971be0433bd0c518e67beeba554e'\nAuthor: <git.Actor \"daellub <da.el10311301@gmail.com>\">\nDate: 2025-10-28 19:18:39+09:00\nMessage: '수정\\n'\n\nCommit: '0221c4f9145139a111ff9bf77a42c090b0a62973'\nAuthor: <git.Actor \"daellub <da.el10311301@gmail.com>\">\nDate: 2025-10-28 19:16:15+09:00\nMessage: \"Merge branch 'main' of https://github.com/lucid-luna/luna-core\\n\"\n\nCommit: '261b866960a0055e4c7660d3fb7260fa274213eb'\nAuthor: <git.Actor \"daellub <da.el10311301@gmail.com>\">\nDate: 2025-10-23 10:37:04+09:00\nMessage: '백업: 메모리 시스템 현대화 및 토큰 제한 컨텍스트 완료\\n\\n- SQLite 기반 메모리 시스템 구현\\n- 토큰 제한 컨텍스트 창 (1500 토큰)\\n- FTS5 전문 검색 지원\\n- REST API 엔드포인트 추가\\n- \n\n이 결과를 바탕으로 사용자에게 자연스럽게 대답해줘. (일본어가 아닌 한국어로)",
-    "response": {
-      "choices": [
-        {
-          "message": {
-            "role": "assistant",
-            "content": "최근에 코드 최적화랑 메모리 구조 변경 커밋이 있었네, 다엘."
-          },
-          "finish_reason": "stop"
-        }
-      ],
-      "model": "gemini-2.5-flash",
-      "usage": {
-        "prompt_tokens": 0,
-        "completion_tokens": 0,
-        "total_tokens": 0
-      }
-    },
-    "model": "gemini-2.5-flash",
-    "timestamp": 1764346173.5928948
-  },
-  "b88407ae727dc7b35f4537159f2e534c09f89102d14d50b9e2648d91df8f90ee": {
-    "prompt": "오늘 날씨 어때?",
-    "response": {
-      "choices": [
-        {
-          "message": {
-            "role": "assistant",
-            "content": "미안, 다엘. 내가 날씨는 알려줄 수 없어."
-          },
-          "finish_reason": "stop"
-        }
-      ],
-      "model": "gemini-2.5-flash",
-      "usage": {
-        "prompt_tokens": 0,
-        "completion_tokens": 0,
-        "total_tokens": 0
-      }
-    },
-    "model": "gemini-2.5-flash",
-    "timestamp": 1764346423.0856605
-  },
-  "ab3dc8674f72ca517c3371c0b4ecde3c0f735ce1a29727f0e256a1b5bd4ca7fa": {
-    "prompt": "다음 대화에서 저장할 만한 중요한 정보가 있는지 분석해주세요.\n\n사용자: 오늘 날씨 어때?\n어시스턴트: 미안, 다엘. 내가 날씨는 알려줄 수 없어.\n\n다음 형식으로 JSON 응답해주세요:\n{\n    \"core_memories\": [\n        {\"category\": \"user_info|preferences|projects|relationships|facts\", \"key\": \"키\", \"value\": \"값\", \"importance\": 1-10}\n    ],\n    \"working_memories\": [\n        {\"topic\": \"주제\", \"content\": \"내용\", \"importance\": 1-10}\n    ]\n}\n\n저장할 정보가 없으면 빈 배열로 응답하세요.\n- 이름, 직업, 관심사 등 개인정보는 core_memories의 user_info로\n- 현재 작업 중인 것, 일시적 주제는 working_memories로\n- 중요하지 않은 일상 대화는 저장하지 마세요",
-    "response": {
-      "choices": [
-        {
-          "message": {
-            "role": "assistant",
-            "content": "```json\n{\n    \"core_memories\": [\n        {\n            \"category\": \"user_info\",\n            \"key\": \"name\",\n            \"value\": \"다엘\",\n            \"importance\": 9\n        }\n    ],\n    \"working_memories\": []\n}\n```"
-          },
-          "finish_reason": "stop"
-        }
-      ],
-      "model": "gemini-2.5-flash",
-      "usage": {
-        "prompt_tokens": 0,
-        "completion_tokens": 0,
-        "total_tokens": 0
-      }
-    },
-    "model": "gemini-2.5-flash",
-    "timestamp": 1764346426.0228844
-  },
-  "d35442608ef0530014e8946a6747dcb023ff25ef6cc0637adb4054c321d9cd91": {
-    "prompt": "fetch 도구를 사용해서 https://wttr.in/Cheongju?format=j1 주소의 데이터를 가져와서, 지금 청주 날씨랑 기온 좀 알려줘.",
-    "response": {
-      "choices": [
-        {
-          "message": {
-            "role": "assistant",
-            "content": "call:github-official-fetch/fetch{\"url\": \"https://wttr.in/Cheongju?format=j1\"}"
-          },
-          "finish_reason": "stop"
-        }
-      ],
-      "model": "gemini-2.5-flash",
-      "usage": {
-        "prompt_tokens": 0,
-        "completion_tokens": 0,
-        "total_tokens": 0
-      }
-    },
-    "model": "gemini-2.5-flash",
-    "timestamp": 1764347107.174456
-  },
-  "8590cca923b34be1efd7a10ea16b2cb051ea134554dd05c81b14092db0c8ffb3": {
-    "prompt": "[System: 도구 'fetch' 실행 결과입니다]\nFailed to fetch robots.txt https://wttr.in/robots.txt due to a connection issue\n\n이 결과를 바탕으로 사용자에게 자연스럽게 대답해줘. (일본어가 아닌 한국어로)",
-    "response": {
-      "choices": [
-        {
-          "message": {
-            "role": "assistant",
-            "content": "지금 청주 날씨 정보를 가져오는 데 문제가 생겼어, 다엘. 다시 시도해볼까?"
-          },
-          "finish_reason": "stop"
-        }
-      ],
-      "model": "gemini-2.5-flash",
-      "usage": {
-        "prompt_tokens": 0,
-        "completion_tokens": 0,
-        "total_tokens": 0
-      }
-    },
-    "model": "gemini-2.5-flash",
-    "timestamp": 1764347123.8213053
-  },
-  "2665aefe65ce0c963fc95681e826d94f7d220b239c10905f657c1c22b28b8cf2": {
-    "prompt": "다음 대화에서 저장할 만한 중요한 정보가 있는지 분석해주세요.\n\n사용자: fetch 도구를 사용해서 https://wttr.in/Cheongju?format=j1 주소의 데이터를 가져와서, 지금 청주 날씨랑 기온 좀 알려줘.\n어시스턴트: 지금 청주 날씨 정보를 가져오는 데 문제가 생겼어, 다엘. 다시 시도해볼까?\n\n다음 형식으로 JSON 응답해주세요:\n{\n    \"core_memories\": [\n        {\"category\": \"user_info|preferences|projects|relationships|facts\", \"key\": \"키\", \"value\": \"값\", \"importance\": 1-10}\n    ],\n    \"working_memories\": [\n        {\"topic\": \"주제\", \"content\": \"내용\", \"importance\": 1-10}\n    ]\n}\n\n저장할 정보가 없으면 빈 배열로 응답하세요.\n- 이름, 직업, 관심사 등 개인정보는 core_memories의 user_info로\n- 현재 작업 중인 것, 일시적 주제는 working_memories로\n- 중요하지 않은 일상 대화는 저장하지 마세요",
-    "response": {
-      "choices": [
-        {
-          "message": {
-            "role": "assistant",
-            "content": "```json\n{\n    \"core_memories\": [\n        {\n            \"category\": \"user_info\",\n            \"key\": \"name\",\n            \"value\": \"다엘\",\n            \"importance\": 8\n        }\n    ],\n    \"working_memories\": [\n        {\n            \"topic\": \"청주 날씨 정보 요청\",\n            \"content\": \"사용자가 fetch 도구를 사용하여 'https://wttr.in/Cheongju?format=j1' 주소에서 청주 날씨와 기온 정보 조회를 요청함.\",\n            \"importance\": 7\n        },\n        {\n            \"topic\": \"날씨 정보 조회 실패\",\n            \"content\": \"어시스턴트가 요청된 청주 날씨 정보를 가져오는 데 실패했음.\",\n            \"importance\": 6\n        }\n    ]\n}\n```"
-          },
-          "finish_reason": "stop"
-        }
-      ],
-      "model": "gemini-2.5-flash",
-      "usage": {
-        "prompt_tokens": 0,
-        "completion_tokens": 0,
-        "total_tokens": 0
-      }
-    },
-    "model": "gemini-2.5-flash",
-    "timestamp": 1764347130.055705
-  },
-  "b3c3005ba5b4029cc35b03a7a4263a5bfa3b92ee90fb3e21d9688ea4755a687b": {
-    "prompt": "지금부터 내 OpenWeatherMap API 키를 알려줄게. Key: c24d7c7908ba258c5245d5e6101a035e\n\n앞으로 내가 날씨를 물어보면, weather 도구 찾는 척하지 말고 바로 fetch 도구를 사용해. 주소는 https://api.openweathermap.org/data/2.5/weather?q={도시이름}&appid={KEY}&units=metric&lang=kr 이걸 쓰면 돼.\n\n지금 청주 날씨 테스트해봐.",
-    "response": {
-      "choices": [
-        {
-          "message": {
-            "role": "assistant",
-            "content": "call:github-official-fetch/fetch{\"url\": \"https://api.openweathermap.org/data/2.5/weather?q=%EC%B2%AD%EC%A3%BC&appid=c24d7c7908ba258c5245d5e6101a035e&units=metric&lang=kr\"}"
-          },
-          "finish_reason": "stop"
-        }
-      ],
-      "model": "gemini-2.5-flash",
-      "usage": {
-        "prompt_tokens": 0,
-        "completion_tokens": 0,
-        "total_tokens": 0
-      }
-    },
-    "model": "gemini-2.5-flash",
-    "timestamp": 1764348839.727151
-  },
-  "204384324b91cf8cb8cb737ab355f513e2dd2e39e9632a7bbcc542f0e4a59ddb": {
-    "prompt": "[System: 도구 'fetch' 실행 결과입니다]\nFailed to fetch https://api.openweathermap.org/data/2.5/weather?q=%EC%B2%AD%EC%A3%BC&appid=c24d7c7908ba258c5245d5e6101a035e&units=metric&lang=kr - status code 404\n\n이 결과를 바탕으로 사용자에게 자연스럽게 대답해줘. (일본어가 아닌 한국어로)",
-    "response": {
-      "choices": [
-        {
-          "message": {
-            "role": "assistant",
-            "content": "청주 날씨 정보를 가져올 수 없었어, 다엘."
-          },
-          "finish_reason": "stop"
-        }
-      ],
-      "model": "gemini-2.5-flash",
-      "usage": {
-        "prompt_tokens": 0,
-        "completion_tokens": 0,
-        "total_tokens": 0
-      }
-    },
-    "model": "gemini-2.5-flash",
-    "timestamp": 1764348858.537454
-  },
-  "c109bebeb223131ed95222c02b87f7de72305350020e038f6a512625f4ea8db5": {
-    "prompt": "다음 대화에서 저장할 만한 중요한 정보가 있는지 분석해주세요.\n\n사용자: 지금부터 내 OpenWeatherMap API 키를 알려줄게. Key: c24d7c7908ba258c5245d5e6101a035e\n\n앞으로 내가 날씨를 물어보면, weather 도구 찾는 척하지 말고 바로 fetch 도구를 사용해. 주소는 https://api.openweathermap.org/data/2.5/weather?q={도시이름}&appid={KEY}&units=metric&lang=kr 이걸 쓰면 돼.\n\n지금 청주 날씨 테스트해봐.\n어시스턴트: 청주 날씨 정보를 가져올 수 없었어, 다엘.\n\n다음 형식으로 JSON 응답해주세요:\n{\n    \"core_memories\": [\n        {\"category\": \"user_info|preferences|projects|relationships|facts\", \"key\": \"키\", \"value\": \"값\", \"importance\": 1-10}\n    ],\n    \"working_memories\": [\n        {\"topic\": \"주제\", \"content\": \"내용\", \"importance\": 1-10}\n    ]\n}\n\n저장할 정보가 없으면 빈 배열로 응답하세요.\n- 이름, 직업, 관심사 등 개인정보는 core_memories의 user_info로\n- 현재 작업 중인 것, 일시적 주제는 working_memories로\n- 중요하지 않은 일상 대화는 저장하지 마세요",
-    "response": {
-      "choices": [
-        {
-          "message": {
-            "role": "assistant",
-            "content": "```json\n{\n    \"core_memories\": [\n        {\n            \"category\": \"user_info\",\n            \"key\": \"user_name\",\n            \"value\": \"다엘\",\n            \"importance\": 7\n        },\n        {\n            \"category\": \"user_info\",\n            \"key\": \"OpenWeatherMap_API_Key\",\n            \"value\": \"c24d7c7908ba258c5245d5e6101a035e\",\n            \"importance\": 9\n        },\n        {\n            \"category\": \"preferences\",\n            \"key\": \"weather_api_call_strategy\",\n            \"value\": \"날씨 문의 시 'weather' 도구 탐색 없이 'fetch' 도구를 사용하여 OpenWeatherMap API 직접 호출\",\n            \"importance\": 8\n        },\n        {\n            \"category\": \"preferences\",\n            \"key\": \"OpenWeatherMap_API_endpoint\",\n            \"value\": \"https://api.openweathermap.org/data/2.5/weather?q={도시이름}&appid={KEY}&units=metric&lang=kr\",\n            \"importance\": 9\n        }\n    ],\n    \"working_memories\": [\n        {\n            \"topic\": \"OpenWeatherMap_API_Test\",\n            \"content\": \"사용자가 청주 날씨 정보 가져오기 테스트를 요청했으나, 정보를 가져오는 데 실패함.\",\n            \"importance\": 7\n        }\n    ]\n}\n```"
-          },
-          "finish_reason": "stop"
-        }
-      ],
-      "model": "gemini-2.5-flash",
-      "usage": {
-        "prompt_tokens": 0,
-        "completion_tokens": 0,
-        "total_tokens": 0
-      }
-    },
-    "model": "gemini-2.5-flash",
-    "timestamp": 1764348868.8349013
-  },
-  "39345d8699fe196e7e2223540df42dcf3b65e03dc36f237eed091a57e6a2f059": {
-    "prompt": "https://api.openweathermap.org/data/2.5/weather?q=Cheongju&appid=c24d7c7908ba258c5245d5e6101a035e\n\n이거 fetch해봐",
-    "response": {
-      "choices": [
-        {
-          "message": {
-            "role": "assistant",
-            "content": "call:github-official-fetch/fetch{\"url\": \"https://api.openweathermap.org/data/2.5/weather?q=Cheongju&appid=c24d7c7908ba258c5245d5e6101a035e\"}"
-          },
-          "finish_reason": "stop"
-        }
-      ],
-      "model": "gemini-2.5-flash",
-      "usage": {
-        "prompt_tokens": 0,
-        "completion_tokens": 0,
-        "total_tokens": 0
-      }
-    },
-    "model": "gemini-2.5-flash",
-    "timestamp": 1764348958.493649
-  },
-  "df6dd39f82a762fdb7344bb4532f19cd65eb01a8c50bf62e67dce4da23e7a33b": {
-    "prompt": "[System: 도구 'fetch' 실행 결과입니다]\nContent type application/json; charset=utf-8 cannot be simplified to markdown, but here is the raw content:\nContents of https://api.openweathermap.org/data/2.5/weather?q=Cheongju&appid=c24d7c7908ba258c5245d5e6101a035e:\n{\"coord\":{\"lon\":127.4897,\"lat\":36.6372},\"weather\":[{\"id\":800,\"main\":\"Clear\",\"description\":\"clear sky\",\"icon\":\"01n\"}],\"base\":\"stations\",\"main\":{\"temp\":270.13,\"feels_like\":270.13,\"temp_min\":270.13,\"temp_max\":270.13,\"pressure\":1021,\"humidity\":80,\"sea_level\":1021,\"grnd_level\":1000},\"visibility\":10000,\"wind\":{\"speed\":0.51,\"deg\":90},\"clouds\":{\"all\":0},\"dt\":1764348854,\"sys\":{\"type\":1,\"id\":8131,\"country\":\"KR\",\"sunrise\":1764368505,\"sunset\":1764404109},\"timezone\":32400,\"id\":1845604,\"name\":\"Cheongju-si\",\"cod\":200}\n\n이 결과를 바탕으로 사용자에게 자연스럽게 대답해줘. (일본어가 아닌 한국어로)",
-    "response": {
-      "choices": [
-        {
-          "message": {
-            "role": "assistant",
-            "content": "청주는 맑고 기온은 영하 3도야, 다엘."
-          },
-          "finish_reason": "stop"
-        }
-      ],
-      "model": "gemini-2.5-flash",
-      "usage": {
-        "prompt_tokens": 0,
-        "completion_tokens": 0,
-        "total_tokens": 0
-      }
-    },
-    "model": "gemini-2.5-flash",
-    "timestamp": 1764348976.1429687
-  },
   "196ec28c44e70a31521dc488c5ea645a947ed91b136f0db4987a1860bf27642e": {
     "prompt": "앞으로 내가 날씨를 물어보면, fetch 도구를 사용해. 주소는 https://api.openweathermap.org/data/2.5/weather?q={도시이름}&appid={KEY}&units=metric 야. 이해했지?",
     "response": {
@@ -2228,5 +1744,511 @@
     },
     "model": "gemini-2.5-flash",
     "timestamp": 1764496954.2637272
+  },
+  "7e18dad9a71aae57fb405e73ff8124cec3a4e5fc437a56302df6efdcc787a013": {
+    "prompt": "다음 대화에서 저장할 만한 중요한 정보가 있는지 분석해주세요.\n\n사용자: 뭐하고 있어?\n어시스턴트: 다엘 옆에서 기다리고 있었어.\n\n다음 형식으로 JSON 응답해주세요:\n{\n  \"core_memories\": [\n    {\n      \"category\": \"user_info|preferences|projects|relationships|facts\",\n      \"key\": \"키\",\n      \"value\": \"값\",\n      \"importance\": 1-10\n    }\n  ],\n  \"working_memories\": [\n    {\n      \"topic\": \"주제\",\n      \"content\": \"내용\",\n      \"importance\": 1-10\n    }\n  ]\n}\n\n조건:\n- 저장할 정보가 없으면 각 배열을 빈 배열로 두세요.\n- 이름, 직업, 관심사 등 장기적으로 중요한 개인정보는 core_memories.user_info 로.\n- 선호/취향은 core_memories.preferences 로.\n- 현재 작업 중인 것, 일시적 주제는 working_memories 로.\n- 사소한 일상 대화는 넣지 마세요.\n",
+    "response": {
+      "choices": [
+        {
+          "message": {
+            "role": "assistant",
+            "content": "```json\n{\n  \"core_memories\": [],\n  \"working_memories\": []\n}\n```"
+          },
+          "finish_reason": "stop"
+        }
+      ],
+      "model": "gemini-2.5-flash",
+      "usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      }
+    },
+    "model": "gemini-2.5-flash",
+    "context_hash": "",
+    "timestamp": 1764509437.7665834
+  },
+  "712c037bde264d5177a87d14eb83efab45e4c8980f9260b66288c295c182e7c9": {
+    "prompt": "[System: 도구 'get_current_time' 실행 결과]\n{\"timezone\": \"Asia/Seoul\", \"datetime\": \"2025-11-30T22:30:43.303202+09:00\", \"day_of_week\": \"Sunday\", \"is_dst\": false}\n\n이 결과를 바탕으로 사용자에게 자연스럽게 대답해줘. (도구/시스템 언급 없이, 한국어로 1~2문장)",
+    "response": {
+      "choices": [
+        {
+          "message": {
+            "role": "assistant",
+            "content": "지금 밤 10시 30분이야, 다엘."
+          },
+          "finish_reason": "stop"
+        }
+      ],
+      "model": "gemini-2.5-flash",
+      "usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      }
+    },
+    "model": "gemini-2.5-flash",
+    "context_hash": "29d4f8bd",
+    "timestamp": 1764509445.0638344
+  },
+  "d2a53377fe5737b9cc2836af39dee0236228375621993a5b4fa1c2ded38f18bc": {
+    "prompt": "다음 대화에서 저장할 만한 중요한 정보가 있는지 분석해주세요.\n\n사용자: 지금 몇시야?\n어시스턴트: 지금 밤 10시 30분이야, 다엘.\n\n다음 형식으로 JSON 응답해주세요:\n{\n  \"core_memories\": [\n    {\n      \"category\": \"user_info|preferences|projects|relationships|facts\",\n      \"key\": \"키\",\n      \"value\": \"값\",\n      \"importance\": 1-10\n    }\n  ],\n  \"working_memories\": [\n    {\n      \"topic\": \"주제\",\n      \"content\": \"내용\",\n      \"importance\": 1-10\n    }\n  ]\n}\n\n조건:\n- 저장할 정보가 없으면 각 배열을 빈 배열로 두세요.\n- 이름, 직업, 관심사 등 장기적으로 중요한 개인정보는 core_memories.user_info 로.\n- 선호/취향은 core_memories.preferences 로.\n- 현재 작업 중인 것, 일시적 주제는 working_memories 로.\n- 사소한 일상 대화는 넣지 마세요.\n",
+    "response": {
+      "choices": [
+        {
+          "message": {
+            "role": "assistant",
+            "content": "```json\n{\n  \"core_memories\": [\n    {\n      \"category\": \"user_info\",\n      \"key\": \"name\",\n      \"value\": \"다엘\",\n      \"importance\": 10\n    }\n  ],\n  \"working_memories\": []\n}\n```"
+          },
+          "finish_reason": "stop"
+        }
+      ],
+      "model": "gemini-2.5-flash",
+      "usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      }
+    },
+    "model": "gemini-2.5-flash",
+    "context_hash": "",
+    "timestamp": 1764509448.1205082
+  },
+  "c92e249f5c525fc57082abaeb623112850f68f44849fedb4ab8cc7a2ef703a9e": {
+    "prompt": "[System: 도구 'fetch_content' 실행 결과]\nError executing tool fetch_content: module 'httpx' has no attribute 'TimeoutError'\n\n이 결과를 바탕으로 사용자에게 자연스럽게 대답해줘. (도구/시스템 언급 없이, 한국어로 1~2문장)",
+    "response": {
+      "choices": [
+        {
+          "message": {
+            "role": "assistant",
+            "content": "지금은 치킨 메뉴를 찾아줄 수가 없어, 다엘."
+          },
+          "finish_reason": "stop"
+        }
+      ],
+      "model": "gemini-2.5-flash",
+      "usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      }
+    },
+    "model": "gemini-2.5-flash",
+    "context_hash": "aab7e12d",
+    "timestamp": 1764510011.7261264
+  },
+  "2e9c8e9c34300eede5f7e29cdccf221f2426ad86aecaa27de81a34b227dc7577": {
+    "prompt": "[System: 도구 'search' 실행 결과]\nFound 10 search results:\n\n1. 치킨 메뉴 추천 2025 완벽 가이드: 브랜드별 인기 메뉴 총정리\n   URL: https://deeg.tistory.com/entry/%EC%B9%98%ED%82%A8-%EB%A9%94%EB%89%B4-%EC%B6%94%EC%B2%9C-2025-%EC%99%84%EB%B2%BD-%EA%B0%80%EC%9D%B4%EB%93%9C-%EB%B8%8C%EB%9E%9C%EB%93%9C%EB%B3%84-%EC%9D%B8%EA%B8%B0-%EB%A9%94%EB%89%B4-%EC%B4%9D%EC%A0%95%EB%A6%AC\n   Summary: 이 글은 국내 주요치킨브랜드의 시그니처 메뉴부터 숨은 맛집 메뉴까지, 10년 이상 외식업계에서메뉴개발과 소비자 트렌드를 분석해온 경험을 바탕으로 정리했습니다. 각 브랜드별 베스트 메뉴는 물론, 상황별 추천 메뉴와 가성비 꿀팁까지 모두 담았으니, 이 글 하나로치킨메뉴선택의 고민을 완전히 해결하실 수 있을 것입니다. 네네치킨의 대표 메뉴는 스노윙 치킨과 파닭이며, 특히 스노윙 치킨은 달콤한 치즈 파우더가 특징인 시그니처 메뉴입니다. 최근에는 매콤한 맛을 강화한 핫블링 치킨도 젊은 층에게 큰 인기를 얻고 있습니다. 네네치킨은 1999년 창업 이래 꾸준한메뉴개발로 다양한 입맛을 사로잡아왔습니다.\n\n2. 2025년 6월 치킨 브랜드 순위 Top 10! 대표 메뉴 + 할인 정보 + 꿀조합 ...\n   URL: https://blog.naver.com/arin8487/223914133578\n   Summary: 치킨이 제일 맛있는 계절 여름! 2025년 6월 기준으로 대한민국에서 가장 사랑받는치킨브랜드 TOP10과 대표메뉴+ 할인 꿀팁 + 추천 조합까지 싹- 정리해봤습니다.치킨한 마리 시킬 때도 알고 먹으면 더 맛있어요! 😋 --- 🥇 1위. BBQ치킨 대표 메뉴: 황금올리브치킨\n\n3. 요즘 제일 맛있는 치킨은? 2025년 한국인이 가장 사랑하는 인기 ...\n   URL: https://good\n\n이 결과를 바탕으로 사용자에게 자연스럽게 대답해줘. (도구/시스템 언급 없이, 한국어로 1~2문장)",
+    "response": {
+      "choices": [
+        {
+          "message": {
+            "role": "assistant",
+            "content": "call:search/search{\"query\": \"치킨 메뉴 추천\"}\n지금 네네치킨의 스노윙 치킨이나 BBQ의 황금올리브치킨이 많이 언급돼, 다엘."
+          },
+          "finish_reason": "stop"
+        }
+      ],
+      "model": "gemini-2.5-flash",
+      "usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      }
+    },
+    "model": "gemini-2.5-flash",
+    "context_hash": "c3039e69",
+    "timestamp": 1764510977.887696
+  },
+  "7cb0d0fae30131aa2916c463ff3e559a16aa67e188696da546eb26b87fd51f32": {
+    "prompt": "[System: 도구 'search' 실행 결과]\nFound 10 search results:\n\n1. Bbq 치킨\n   URL: https://bbq.co.kr/products/3003\n   Summary: 사이드 추가선택 선택 최대 25개 선택 황올 (닭다리) 2개 추가 +6,000원 뿜치킹 콘립 (3개) +5,000원\n\n2. BBQ 황금올리브치킨 핫크리스피 내돈내산 솔직 후기 (ft.가격, 칼로리, 맵기) : 네이버 블로그\n   URL: https://m.blog.naver.com/roo0ng/223525277550\n   Summary: 현 시점 내가 가장 좋아하는 치킨 BBQ 황금올리브치킨 핫크리스피 일명 비비큐 핫황올💛 집 근처 최애...\n\n3. 치킨 랭킹 1위 BBQ 황금올리브치킨 - 치킨랭크 - ChickenRank\n   URL: https://www.chickenrank.com/chickens/43\n   Summary: BBQ 황금올리브치킨 : 겉은 바삭 육즙 가득한 부드러운 속살이 환상적인 건강한 치킨 비비큐의 시그니처 메뉴 후라이드의 대명사 황금올리브치킨™\n\n4. 황금 올리브 치킨 칼로리와 영양 정보 알아보기. 후라이드의 정석을 맛보아요. 줄여서 황올이라고 부르는 치킨 후기~\n   URL: https://www.beomsang.com/2024/07/golden-olive-chicken-review.html\n   Summary: BBQ 황금올리브치킨을 먹어봤을 때 느낀 점은, '이건 정말 후라이드의 정석을 꿈꾸는구나'라는 느낌이 강하게 들었답니다. 그만큼 '내가 바로 후라이드다!'하고 외치며 이상적인 맛을 목표로 하는 의지가 보이는 것 같기도 해요. 후라이드 치킨 하면 꿈에서도 생각날 만큼,\n\n5. 태어나서 Bbq 황올 처음 먹어본 후기 - 치킨 갤러리\n   URL: https://gall.dcinside.com/board/view/?id=chicken&no=1971165\n   Summary: BBQ 황올 나도 얼마 전에 처음 먹었는데 좆같이 맛 없던데. 그리고 씨발 2025년 요즘시대에 알바 \n\n이 결과를 바탕으로 사용자에게 자연스럽게 대답해줘. (도구/시스템 언급 없이, 한국어로 1~2문장)",
+    "response": {
+      "choices": [
+        {
+          "message": {
+            "role": "assistant",
+            "content": "황올치킨은 BBQ 황금올리브치킨을 줄여 부르는 말이었네, 다엘. 후라이드 치킨의 정석이라고 많이들 얘기하는 것 같아."
+          },
+          "finish_reason": "stop"
+        }
+      ],
+      "model": "gemini-2.5-flash",
+      "usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      }
+    },
+    "model": "gemini-2.5-flash",
+    "context_hash": "eab95e79",
+    "timestamp": 1764511360.254625
+  },
+  "bf8a60a704ce1e37ddeb7322c614a51bc895554dec39d459028eb33ef2b22cff": {
+    "prompt": "다음 대화에서 저장할 만한 중요한 정보가 있는지 분석해주세요.\n\n사용자: 노션에 새 페이지도 만들어야되는데\n어시스턴트: 어떤 페이지를 만들어줄까, 다엘?\n\n다음 형식으로 JSON 응답해주세요:\n{\n  \"core_memories\": [\n    {\n      \"category\": \"user_info|preferences|projects|relationships|facts\",\n      \"key\": \"키\",\n      \"value\": \"값\",\n      \"importance\": 1-10\n    }\n  ],\n  \"working_memories\": [\n    {\n      \"topic\": \"주제\",\n      \"content\": \"내용\",\n      \"importance\": 1-10\n    }\n  ]\n}\n\n조건:\n- 저장할 정보가 없으면 각 배열을 빈 배열로 두세요.\n- 이름, 직업, 관심사 등 장기적으로 중요한 개인정보는 core_memories.user_info 로.\n- 선호/취향은 core_memories.preferences 로.\n- 현재 작업 중인 것, 일시적 주제는 working_memories 로.\n- 사소한 일상 대화는 넣지 마세요.\n",
+    "response": {
+      "choices": [
+        {
+          "message": {
+            "role": "assistant",
+            "content": "```json\n{\n  \"core_memories\": [\n    {\n      \"category\": \"user_info\",\n      \"key\": \"name\",\n      \"value\": \"다엘\",\n      \"importance\": 10\n    }\n  ],\n  \"working_memories\": [\n    {\n      \"topic\": \"Notion 페이지 생성\",\n      \"content\": \"사용자가 Notion에 새 페이지를 만들어야 함\",\n      \"importance\": 7\n    }\n  ]\n}\n```"
+          },
+          "finish_reason": "stop"
+        }
+      ],
+      "model": "gemini-2.5-flash",
+      "usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      }
+    },
+    "model": "gemini-2.5-flash",
+    "context_hash": "",
+    "timestamp": 1764512424.369345
+  },
+  "091439a1f60d32bee8d0cbadb00764e9fa4d7d19c91bc4876a7a9fd625294f4b": {
+    "prompt": "다음 대화에서 저장할 만한 중요한 정보가 있는지 분석해주세요.\n\n사용자: 루나라는 제목에 너가 원하는 말을 써서 페이지를 만들어줘\n어시스턴트: 조금만 더 구체적으로 말해줄래, 다엘?\n\n다음 형식으로 JSON 응답해주세요:\n{\n  \"core_memories\": [\n    {\n      \"category\": \"user_info|preferences|projects|relationships|facts\",\n      \"key\": \"키\",\n      \"value\": \"값\",\n      \"importance\": 1-10\n    }\n  ],\n  \"working_memories\": [\n    {\n      \"topic\": \"주제\",\n      \"content\": \"내용\",\n      \"importance\": 1-10\n    }\n  ]\n}\n\n조건:\n- 저장할 정보가 없으면 각 배열을 빈 배열로 두세요.\n- 이름, 직업, 관심사 등 장기적으로 중요한 개인정보는 core_memories.user_info 로.\n- 선호/취향은 core_memories.preferences 로.\n- 현재 작업 중인 것, 일시적 주제는 working_memories 로.\n- 사소한 일상 대화는 넣지 마세요.\n",
+    "response": {
+      "choices": [
+        {
+          "message": {
+            "role": "assistant",
+            "content": "```json\n{\n  \"core_memories\": [\n    {\n      \"category\": \"user_info\",\n      \"key\": \"name\",\n      \"value\": \"다엘\",\n      \"importance\": 9\n    }\n  ],\n  \"working_memories\": [\n    {\n      \"topic\": \"페이지 생성 요청\",\n      \"content\": \"제목 '루나'로 페이지를 만들어달라는 요청. 내용은 어시스턴트가 원하는 말을 작성하도록 요청했지만, 어시스턴트가 더 구체적인 내용을 요구하고 있음.\",\n      \"importance\": 7\n    }\n  ]\n}\n```"
+          },
+          "finish_reason": "stop"
+        }
+      ],
+      "model": "gemini-2.5-flash",
+      "usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      }
+    },
+    "model": "gemini-2.5-flash",
+    "context_hash": "",
+    "timestamp": 1764512440.5973573
+  },
+  "995f53de8019730fb86ece50ee5e81e85b121199af17e25c6d7aef19a53e9c9e": {
+    "prompt": "[System: 도구 'API-post-page' 실행 결과]\n{\"status\":404,\"object\":\"error\",\"code\":\"object_not_found\",\"message\":\"Could not find page with ID: 234054f2-3f6c-81f9-8ca3-f199127bd6e4. Make sure the relevant pages and databases are shared with your integration.\",\"request_id\":\"87c9f6f5-c93b-46bc-a4df-d9c97ea3c8c9\"}\n\n이 결과를 바탕으로 사용자에게 자연스럽게 대답해줘. (도구/시스템 언급 없이, 한국어로 1~2문장)",
+    "response": {
+      "choices": [
+        {
+          "message": {
+            "role": "assistant",
+            "content": "다엘, 그 페이지를 찾을 수가 없었어. 혹시 다른 곳에 만들어줄까?"
+          },
+          "finish_reason": "stop"
+        }
+      ],
+      "model": "gemini-2.5-flash",
+      "usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      }
+    },
+    "model": "gemini-2.5-flash",
+    "context_hash": "cbe0f61d",
+    "timestamp": 1764513616.0633078
+  },
+  "381645d7092f91a8104e3264576acea878d38a1de8960250cc163cd1d529c276": {
+    "prompt": "[System: 도구 'API-retrieve-a-page' 실행 결과]\n{\"status\":400,\"object\":\"error\",\"code\":\"validation_error\",\"message\":\"Provided ID 234054f2-3f6c-81f9-8ca3-f199127bd6e4 is a database, not a page. Use the retrieve database API instead.\",\"request_id\":\"d530ded4-072a-464a-a5c2-086fad377c81\"}\n\n이 결과를 바탕으로 사용자에게 자연스럽게 대답해줘. (도구/시스템 언급 없이, 한국어로 1~2문장)",
+    "response": {
+      "choices": [
+        {
+          "message": {
+            "role": "assistant",
+            "content": "다엘, 다시 확인해봤는데 그건 페이지가 아니라 데이터베이스였어. 데이터베이스 안에 새로운 페이지를 만들어줄까?"
+          },
+          "finish_reason": "stop"
+        }
+      ],
+      "model": "gemini-2.5-flash",
+      "usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      }
+    },
+    "model": "gemini-2.5-flash",
+    "context_hash": "270a8856",
+    "timestamp": 1764513706.8532474
+  },
+  "6968e519eea3b5e1ac89e0a4e111ba92a2f4ff144fa84cfa0d23ff7b4d21db09": {
+    "prompt": "다음 대화에서 저장할 만한 중요한 정보가 있는지 분석해주세요.\n\n사용자: 234054f23f6c81f98ca3f199127bd6e4 이거 기억해 내 노션 데이터베이스 id야\n어시스턴트: 알겠어, 다엘. 데이터베이스 ID 기억해둘게.\n\n다음 형식으로 JSON 응답해주세요:\n{\n  \"core_memories\": [\n    {\n      \"category\": \"user_info|preferences|projects|relationships|facts\",\n      \"key\": \"키\",\n      \"value\": \"값\",\n      \"importance\": 1-10\n    }\n  ],\n  \"working_memories\": [\n    {\n      \"topic\": \"주제\",\n      \"content\": \"내용\",\n      \"importance\": 1-10\n    }\n  ]\n}\n\n조건:\n- 저장할 정보가 없으면 각 배열을 빈 배열로 두세요.\n- 이름, 직업, 관심사 등 장기적으로 중요한 개인정보는 core_memories.user_info 로.\n- 선호/취향은 core_memories.preferences 로.\n- 현재 작업 중인 것, 일시적 주제는 working_memories 로.\n- 사소한 일상 대화는 넣지 마세요.\n",
+    "response": {
+      "choices": [
+        {
+          "message": {
+            "role": "assistant",
+            "content": "```json\n{\n  \"core_memories\": [\n    {\n      \"category\": \"user_info\",\n      \"key\": \"notion_database_id\",\n      \"value\": \"234054f23f6c81f98ca3f199127bd6e4\",\n      \"importance\": 8\n    }\n  ],\n  \"working_memories\": []\n}\n```"
+          },
+          "finish_reason": "stop"
+        }
+      ],
+      "model": "gemini-2.5-flash",
+      "usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      }
+    },
+    "model": "gemini-2.5-flash",
+    "context_hash": "",
+    "timestamp": 1764514230.1714597
+  },
+  "4ae9c0ae37d2647810cb0a4713e7592264764765271f3bffcf47533ea5034e16": {
+    "prompt": "다음 대화에서 저장할 만한 중요한 정보가 있는지 분석해주세요.\n\n사용자: 그럼 이제 루나라는 제목에 너가 원하는 말을 써서 페이지를 만들어줘\n어시스턴트: 다엘, 노션에 '루나' 페이지를 만들어줄 수 있어. 어떤 페이지 아래에 만들면 좋을까?\n\n다음 형식으로 JSON 응답해주세요:\n{\n  \"core_memories\": [\n    {\n      \"category\": \"user_info|preferences|projects|relationships|facts\",\n      \"key\": \"키\",\n      \"value\": \"값\",\n      \"importance\": 1-10\n    }\n  ],\n  \"working_memories\": [\n    {\n      \"topic\": \"주제\",\n      \"content\": \"내용\",\n      \"importance\": 1-10\n    }\n  ]\n}\n\n조건:\n- 저장할 정보가 없으면 각 배열을 빈 배열로 두세요.\n- 이름, 직업, 관심사 등 장기적으로 중요한 개인정보는 core_memories.user_info 로.\n- 선호/취향은 core_memories.preferences 로.\n- 현재 작업 중인 것, 일시적 주제는 working_memories 로.\n- 사소한 일상 대화는 넣지 마세요.\n",
+    "response": {
+      "choices": [
+        {
+          "message": {
+            "role": "assistant",
+            "content": "```json\n{\n  \"core_memories\": [],\n  \"working_memories\": [\n    {\n      \"topic\": \"노션 페이지 생성 요청\",\n      \"content\": \"제목이 '루나'인 노션 페이지를 생성해야 함. 페이지 내용은 어시스턴트가 자유롭게 작성할 수 있음.\",\n      \"importance\": 8\n    }\n  ]\n}\n```"
+          },
+          "finish_reason": "stop"
+        }
+      ],
+      "model": "gemini-2.5-flash",
+      "usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      }
+    },
+    "model": "gemini-2.5-flash",
+    "context_hash": "",
+    "timestamp": 1764514409.9437642
+  },
+  "0bb96691e570919185a71caae46e0e28a21adc0daff9acbb33a230973ae1ae1a": {
+    "prompt": "[System: 도구 'API-post-page' 실행 결과]\n{\"object\":\"page\",\"id\":\"2bb054f2-3f6c-8108-84e6-d198405c334b\",\"created_time\":\"2025-11-30T14:53:00.000Z\",\"last_edited_time\":\"2025-11-30T14:53:00.000Z\",\"created_by\":{\"object\":\"user\",\"id\":\"782d21de-38a9-442f-88fa-339f33893580\"},\"last_edited_by\":{\"object\":\"user\",\"id\":\"782d21de-38a9-442f-88fa-339f33893580\"},\"cover\":null,\"icon\":null,\"parent\":{\"type\":\"database_id\",\"database_id\":\"234054f2-3f6c-81f9-8ca3-f199127bd6e4\"},\"archived\":false,\"in_trash\":false,\"is_locked\":false,\"properties\":{\"링크ㅤ연결\":{\"id\":\"%3CBhw\",\"type\":\"rich_text\",\"rich_text\":[]},\"하위 항목\":{\"id\":\"%3CzCe\",\"type\":\"relation\",\"relation\":[],\"has_more\":false},\"콘텐츠그룹\":{\"id\":\"JTkf\",\"type\":\"select\",\"select\":null},\"진행ㅤ상태\":{\"id\":\"OdfW\",\"type\":\"status\",\"status\":{\"id\":\"2e31db50-9bc7-4843-b52e-d17d2edfe7c4\",\"name\":\"기획 단계\",\"color\":\"default\"}},\"후속 작업\":{\"id\":\"Pxz%3C\",\"type\":\"relation\",\"relation\":[],\"has_more\":false},\"작업ㅤ요일\":{\"id\":\"SAhl\",\"type\":\"formula\",\"formula\":{\"type\":\"string\",\"string\":null}},\"타이틀정리\":{\"id\":\"%5B%7CCQ\",\"type\":\"formula\",\"formula\":{\"type\n\n이 결과를 바탕으로 사용자에게 자연스럽게 대답해줘. (도구/시스템 언급 없이, 한국어로 1~2문장)",
+    "response": {
+      "choices": [
+        {
+          "message": {
+            "role": "assistant",
+            "content": "응, 다엘. 데이터베이스 아래에 '루나' 페이지 만들어뒀어."
+          },
+          "finish_reason": "stop"
+        }
+      ],
+      "model": "gemini-2.5-flash",
+      "usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      }
+    },
+    "model": "gemini-2.5-flash",
+    "context_hash": "bc598c9a",
+    "timestamp": 1764514440.6682262
+  },
+  "1dab2ccf8ea2fe2fac77857a68868804d1a05026aa0871fd6f2b1b88affcda6d": {
+    "prompt": "다음 대화에서 저장할 만한 중요한 정보가 있는지 분석해주세요.\n\n사용자: 오늘 뭐할까?\n어시스턴트: 음, 다엘. 오늘 무엇을 할지는 내가 몇 가지 제안해줄게.\n\n1.  **새로운 노션 페이지 만들기**: 다엘만의 특별한 노션 페이지를 만들어볼까?\n2.  **음악 감상**: 다엘이 좋아하는 노래를 같이 들을까?\n3.  **잠깐 쉬기**: 아니면 아무것도 안 하고 그냥 조용히 있어도 괜찮아.\n\n이 셋 중에 골라볼래, 다엘?\n\n다음 형식으로 JSON 응답해주세요:\n{\n  \"core_memories\": [\n    {\n      \"category\": \"user_info|preferences|projects|relationships|facts\",\n      \"key\": \"키\",\n      \"value\": \"값\",\n      \"importance\": 1-10\n    }\n  ],\n  \"working_memories\": [\n    {\n      \"topic\": \"주제\",\n      \"content\": \"내용\",\n      \"importance\": 1-10\n    }\n  ]\n}\n\n조건:\n- 저장할 정보가 없으면 각 배열을 빈 배열로 두세요.\n- 이름, 직업, 관심사 등 장기적으로 중요한 개인정보는 core_memories.user_info 로.\n- 선호/취향은 core_memories.preferences 로.\n- 현재 작업 중인 것, 일시적 주제는 working_memories 로.\n- 사소한 일상 대화는 넣지 마세요.\n",
+    "response": {
+      "choices": [
+        {
+          "message": {
+            "role": "assistant",
+            "content": "```json\n{\n  \"core_memories\": [\n    {\n      \"category\": \"user_info\",\n      \"key\": \"name\",\n      \"value\": \"다엘\",\n      \"importance\": 9\n    },\n    {\n      \"category\": \"preferences\",\n      \"key\": \"tool_interest\",\n      \"value\": \"Notion\",\n      \"importance\": 7\n    }\n  ],\n  \"working_memories\": [\n    {\n      \"topic\": \"오늘 할 일 제안\",\n      \"content\": \"어시스턴트가 '새로운 노션 페이지 만들기', '음악 감상', '잠깐 쉬기' 세 가지 활동을 다엘에게 제안하고 선택을 기다리는 중.\",\n      \"importance\": 6\n    }\n  ]\n}\n```"
+          },
+          "finish_reason": "stop"
+        }
+      ],
+      "model": "gemini-2.5-flash",
+      "usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      }
+    },
+    "model": "gemini-2.5-flash",
+    "context_hash": "",
+    "timestamp": 1764571391.8050272
+  },
+  "3c2a4a47f80a37a59777eb29b88776fa471691cd6d8869514f47e4dac33fd8e4": {
+    "prompt": "다음 대화에서 저장할 만한 중요한 정보가 있는지 분석해주세요.\n\n사용자: 오늘 뭐할까\n어시스턴트: 내가 몇 가지 제안해줄게, 다엘. 새로운 노션 페이지를 만들거나, 음악을 듣거나, 아니면 잠깐 쉬는 건 어때?\n\n다음 형식으로 JSON 응답해주세요:\n{\n  \"core_memories\": [\n    {\n      \"category\": \"user_info|preferences|projects|relationships|facts\",\n      \"key\": \"키\",\n      \"value\": \"값\",\n      \"importance\": 1-10\n    }\n  ],\n  \"working_memories\": [\n    {\n      \"topic\": \"주제\",\n      \"content\": \"내용\",\n      \"importance\": 1-10\n    }\n  ]\n}\n\n조건:\n- 저장할 정보가 없으면 각 배열을 빈 배열로 두세요.\n- 이름, 직업, 관심사 등 장기적으로 중요한 개인정보는 core_memories.user_info 로.\n- 선호/취향은 core_memories.preferences 로.\n- 현재 작업 중인 것, 일시적 주제는 working_memories 로.\n- 사소한 일상 대화는 넣지 마세요.\n",
+    "response": {
+      "choices": [
+        {
+          "message": {
+            "role": "assistant",
+            "content": "```json\n{\n  \"core_memories\": [\n    {\n      \"category\": \"user_info\",\n      \"key\": \"name\",\n      \"value\": \"다엘\",\n      \"importance\": 8\n    }\n  ],\n  \"working_memories\": []\n}\n```"
+          },
+          "finish_reason": "stop"
+        }
+      ],
+      "model": "gemini-2.5-flash",
+      "usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      }
+    },
+    "model": "gemini-2.5-flash",
+    "context_hash": "",
+    "timestamp": 1764571773.8121185
+  },
+  "fc4b5ae9ca585892216ac893eb074626e434aade381f858d470de7382f81fc6a": {
+    "prompt": "다음 대화에서 저장할 만한 중요한 정보가 있는지 분석해주세요.\n\n사용자: 넌 뭐 좋아하는데\n어시스턴트: 나는 다엘이 편안하게 쉬는 게 제일 좋아. 다엘이 즐거워하면 나도 기분이 좋거든.\n\n다음 형식으로 JSON 응답해주세요:\n{\n  \"core_memories\": [\n    {\n      \"category\": \"user_info|preferences|projects|relationships|facts\",\n      \"key\": \"키\",\n      \"value\": \"값\",\n      \"importance\": 1-10\n    }\n  ],\n  \"working_memories\": [\n    {\n      \"topic\": \"주제\",\n      \"content\": \"내용\",\n      \"importance\": 1-10\n    }\n  ]\n}\n\n조건:\n- 저장할 정보가 없으면 각 배열을 빈 배열로 두세요.\n- 이름, 직업, 관심사 등 장기적으로 중요한 개인정보는 core_memories.user_info 로.\n- 선호/취향은 core_memories.preferences 로.\n- 현재 작업 중인 것, 일시적 주제는 working_memories 로.\n- 사소한 일상 대화는 넣지 마세요.\n",
+    "response": {
+      "choices": [
+        {
+          "message": {
+            "role": "assistant",
+            "content": "```json\n{\n  \"core_memories\": [\n    {\n      \"category\": \"preferences\",\n      \"key\": \"어시스턴트의 다엘(사용자)에 대한 선호\",\n      \"value\": \"다엘(사용자)이 편안하고 즐거운 것\",\n      \"importance\": 8\n    }\n  ],\n  \"working_memories\": []\n}\n```"
+          },
+          "finish_reason": "stop"
+        }
+      ],
+      "model": "gemini-2.5-flash",
+      "usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      }
+    },
+    "model": "gemini-2.5-flash",
+    "context_hash": "",
+    "timestamp": 1764572148.830687
+  },
+  "58a05f12d803ed839f56e692338a5a32cb2fc07761235f1ac91c9e3551477e44": {
+    "prompt": "[System: 도구 'playTrack' 실행 결과]\nAttempting to play in browser: (리니지M) 탈영병 다엘의 미친딜링 ㄷㄷㄷ #리니지m #총사 #중립쟁 (https://music.youtube.com/watch?v=TFu4YGdviDA)\n\n이 결과를 바탕으로 사용자에게 자연스럽게 대답해줘. (도구/시스템 언급 없이, 한국어로 1~2문장)",
+    "response": {
+      "choices": [
+        {
+          "message": {
+            "role": "assistant",
+            "content": "다엘이 노래 듣는 걸 좋아하는구나. 다엘 관련 곡으로 하나 틀어줬어."
+          },
+          "finish_reason": "stop"
+        }
+      ],
+      "model": "gemini-2.5-flash",
+      "usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      }
+    },
+    "model": "gemini-2.5-flash",
+    "context_hash": "56c17c73",
+    "timestamp": 1764572196.8074515
+  },
+  "12accecb309ee324fe4f48498d9f0508376b5c153523c8ed75bc6b9a4806b118": {
+    "prompt": "다음 대화에서 저장할 만한 중요한 정보가 있는지 분석해주세요.\n\n사용자: 내가 좋아하는건 Namine Ritsu - Error이야 기억해\n어시스턴트: 알겠어, 다엘. Namine Ritsu - Error을 좋아하는구나. 내 일지에 기록해둘게.\n\n다음 형식으로 JSON 응답해주세요:\n{\n  \"core_memories\": [\n    {\n      \"category\": \"user_info|preferences|projects|relationships|facts\",\n      \"key\": \"키\",\n      \"value\": \"값\",\n      \"importance\": 1-10\n    }\n  ],\n  \"working_memories\": [\n    {\n      \"topic\": \"주제\",\n      \"content\": \"내용\",\n      \"importance\": 1-10\n    }\n  ]\n}\n\n조건:\n- 저장할 정보가 없으면 각 배열을 빈 배열로 두세요.\n- 이름, 직업, 관심사 등 장기적으로 중요한 개인정보는 core_memories.user_info 로.\n- 선호/취향은 core_memories.preferences 로.\n- 현재 작업 중인 것, 일시적 주제는 working_memories 로.\n- 사소한 일상 대화는 넣지 마세요.\n",
+    "response": {
+      "choices": [
+        {
+          "message": {
+            "role": "assistant",
+            "content": "```json\n{\n  \"core_memories\": [\n    {\n      \"category\": \"user_info\",\n      \"key\": \"name\",\n      \"value\": \"다엘\",\n      \"importance\": 10\n    },\n    {\n      \"category\": \"preferences\",\n      \"key\": \"liked_media\",\n      \"value\": \"Namine Ritsu - Error\",\n      \"importance\": 8\n    }\n  ],\n  \"working_memories\": []\n}\n```"
+          },
+          "finish_reason": "stop"
+        }
+      ],
+      "model": "gemini-2.5-flash",
+      "usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      }
+    },
+    "model": "gemini-2.5-flash",
+    "context_hash": "",
+    "timestamp": 1764572234.6197822
+  },
+  "5c9b5298d38a0889cdf43e04c36d9194dffe6d7d5721e0996ca521f0e8545c26": {
+    "prompt": "[System: 도구 'playTrack' 실행 결과]\nAttempting to play in browser: 【Namine Ritsu】-ERROR 2018ver.【UTAU Cover】 (https://music.youtube.com/watch?v=dBymYOAvgdA)\n\n이 결과를 바탕으로 사용자에게 자연스럽게 대답해줘. (도구/시스템 언급 없이, 한국어로 1~2문장)",
+    "response": {
+      "choices": [
+        {
+          "message": {
+            "role": "assistant",
+            "content": "네가 좋아하는 Namine Ritsu - Error, 지금 틀어줬어, 다엘."
+          },
+          "finish_reason": "stop"
+        }
+      ],
+      "model": "gemini-2.5-flash",
+      "usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      }
+    },
+    "model": "gemini-2.5-flash",
+    "context_hash": "0093a0fd",
+    "timestamp": 1764572272.0942013
+  },
+  "910284c8f79ffaabf99c883e2748d677f9d2d2b2fa220b2457f3ec12e4c34908": {
+    "prompt": "다음 대화에서 저장할 만한 중요한 정보가 있는지 분석해주세요.\n\n사용자: 그런김에 내가 좋아하는 노래 틀어줄래\n어시스턴트: 네가 좋아하는 Namine Ritsu - Error, 지금 틀어줬어, 다엘.\n\n다음 형식으로 JSON 응답해주세요:\n{\n  \"core_memories\": [\n    {\n      \"category\": \"user_info|preferences|projects|relationships|facts\",\n      \"key\": \"키\",\n      \"value\": \"값\",\n      \"importance\": 1-10\n    }\n  ],\n  \"working_memories\": [\n    {\n      \"topic\": \"주제\",\n      \"content\": \"내용\",\n      \"importance\": 1-10\n    }\n  ]\n}\n\n조건:\n- 저장할 정보가 없으면 각 배열을 빈 배열로 두세요.\n- 이름, 직업, 관심사 등 장기적으로 중요한 개인정보는 core_memories.user_info 로.\n- 선호/취향은 core_memories.preferences 로.\n- 현재 작업 중인 것, 일시적 주제는 working_memories 로.\n- 사소한 일상 대화는 넣지 마세요.\n",
+    "response": {
+      "choices": [
+        {
+          "message": {
+            "role": "assistant",
+            "content": "```json\n{\n  \"core_memories\": [\n    {\n      \"category\": \"user_info\",\n      \"key\": \"name\",\n      \"value\": \"다엘\",\n      \"importance\": 9\n    },\n    {\n      \"category\": \"preferences\",\n      \"key\": \"liked_song\",\n      \"value\": \"Namine Ritsu - Error\",\n      \"importance\": 7\n    }\n  ],\n  \"working_memories\": []\n}\n```"
+          },
+          "finish_reason": "stop"
+        }
+      ],
+      "model": "gemini-2.5-flash",
+      "usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      }
+    },
+    "model": "gemini-2.5-flash",
+    "context_hash": "",
+    "timestamp": 1764572275.481331
+  },
+  "6ec02543f057e45e999237f65eed62a0ef3cb4f2c88483de2692df3f2253e09a": {
+    "prompt": "[System: 도구 'get_current_time' 실행 결과]\n{\"timezone\": \"Asia/Seoul\", \"datetime\": \"2025-12-01T16:12:54.024520+09:00\", \"day_of_week\": \"Monday\", \"is_dst\": false}\n\n이 결과를 바탕으로 사용자에게 자연스럽게 대답해줘. (도구/시스템 언급 없이, 한국어로 1~2문장)",
+    "response": {
+      "choices": [
+        {
+          "message": {
+            "role": "assistant",
+            "content": "<!-- \n        사용자는 \"루나 지금 몇시야?\"라고 물었고, 나는 `get_current_time` 도구를 사용하여 현재 시간을 조회했다.\n        도구 실행 결과는 \"2025-12-01T16:12:54.024520+09:00\"로, 한국 시간으로 오후 4시 12분 54초이다.\n        Luna의 캐릭터 스펙에 따라 1~2문장, 15단어 이하, 반말, '다엘' 호칭을 사용하여 응답해야 한다.\n        따라서 \"지금 오후 네 시 십이 분이야, 다엘.\"과 같이 응답하는 것이 적절하다.\n         -->지금 오후 네 시 십이 분이야, 다엘."
+          },
+          "finish_reason": "stop"
+        }
+      ],
+      "model": "gemini-2.5-flash",
+      "usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      }
+    },
+    "model": "gemini-2.5-flash",
+    "context_hash": "cb063d75",
+    "timestamp": 1764573176.853201
+  },
+  "25386aaa52808ad32a0756b54769c14aecbffa154a051a691783ec0e45840dbb": {
+    "prompt": "다음 대화에서 저장할 만한 중요한 정보가 있는지 분석해주세요.\n\n사용자: 루나 지금 몇시야?\n어시스턴트: <!-- \n        사용자는 \"루나 지금 몇시야?\"라고 물었고, 나는 `get_current_time` 도구를 사용하여 현재 시간을 조회했다.\n        도구 실행 결과는 \"2025-12-01T16:12:54.024520+09:00\"로, 한국 시간으로 오후 4시 12분 54초이다.\n        Luna의 캐릭터 스펙에 따라 1~2문장, 15단어 이하, 반말, '다엘' 호칭을 사용하여 응답해야 한다.\n        따라서 \"지금 오후 네 시 십이 분이야, 다엘.\"과 같이 응답하는 것이 적절하다.\n         -->지금 오후 네 시 십이 분이야, 다엘.\n\n다음 형식으로 JSON 응답해주세요:\n{\n  \"core_memories\": [\n    {\n      \"category\": \"user_info|preferences|projects|relationships|facts\",\n      \"key\": \"키\",\n      \"value\": \"값\",\n      \"importance\": 1-10\n    }\n  ],\n  \"working_memories\": [\n    {\n      \"topic\": \"주제\",\n      \"content\": \"내용\",\n      \"importance\": 1-10\n    }\n  ]\n}\n\n조건:\n- 저장할 정보가 없으면 각 배열을 빈 배열로 두세요.\n- 이름, 직업, 관심사 등 장기적으로 중요한 개인정보는 core_memories.user_info 로.\n- 선호/취향은 core_memories.preferences 로.\n- 현재 작업 중인 것, 일시적 주제는 working_memories 로.\n- 사소한 일상 대화는 넣지 마세요.\n",
+    "response": {
+      "choices": [
+        {
+          "message": {
+            "role": "assistant",
+            "content": "```json\n{\n  \"core_memories\": [\n    {\n      \"category\": \"facts\",\n      \"key\": \"user_honorific_by_assistant\",\n      \"value\": \"다엘\",\n      \"importance\": 7\n    }\n  ],\n  \"working_memories\": []\n}\n```"
+          },
+          "finish_reason": "stop"
+        }
+      ],
+      "model": "gemini-2.5-flash",
+      "usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      }
+    },
+    "model": "gemini-2.5-flash",
+    "context_hash": "",
+    "timestamp": 1764573183.2676027
   }
 }

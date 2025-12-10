@@ -19,7 +19,7 @@ class DatabaseManager:
     _lock = threading.Lock()
     
     def __new__(cls, db_path: str = "./memory/luna.db"):
-        """싱글톤 패턴으로 DB 연결 관리"""
+        """싱글톤 패턴"""
         if cls._instance is None:
             with cls._lock:
                 if cls._instance is None:
@@ -34,7 +34,7 @@ class DatabaseManager:
         Args:
             db_path: SQLite 파일 경로
         """
-        if self._initialized:
+        if getattr(self, '_initialized', False):
             return
             
         self.db_path = Path(db_path)
@@ -60,7 +60,7 @@ class DatabaseManager:
                 check_same_thread=False,
                 timeout=30.0
             )
-            # Row factory 설정 (딕셔너리 형태로 반환)
+            # Row factory 설정
             self._local.connection.row_factory = sqlite3.Row
             # Foreign key 활성화
             self._local.connection.execute("PRAGMA foreign_keys = ON")
@@ -70,7 +70,7 @@ class DatabaseManager:
     @contextmanager
     def get_cursor(self):
         """
-        컨텍스트 매니저로 커서 제공 (자동 커밋/롤백)
+        컨텍스트 매니저로 커서 제공
         
         Yields:
             sqlite3.Cursor: 데이터베이스 커서
@@ -89,7 +89,8 @@ class DatabaseManager:
     def _init_schema(self):
         """데이터베이스 스키마 초기화"""
         with self.get_cursor() as cursor:
-            cursor.execute("""
+            cursor.execute(
+                """
                 CREATE TABLE IF NOT EXISTS conversations (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     user_id TEXT NOT NULL DEFAULT 'default',
@@ -104,9 +105,11 @@ class DatabaseManager:
                     metadata TEXT,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
                 )
-            """)
+                """
+            )
             
-            cursor.execute("""
+            cursor.execute(
+                """
                 CREATE TABLE IF NOT EXISTS summaries (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     user_id TEXT NOT NULL DEFAULT 'default',
@@ -118,128 +121,168 @@ class DatabaseManager:
                     end_conversation_id INTEGER,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (start_conversation_id) REFERENCES conversations(id),
-                    FOREIGN KEY (end_conversation_id) REFERENCES conversations(id)
+                    FOREIGN KEY (end_conversation_id) REFERENCES conversations(id),
+                    -- v3 설계: user_id + session_id 당 1개만 유지하고 싶으므로 UNIQUE 제약
+                    UNIQUE(user_id, session_id)
                 )
-            """)
+                """
+            )
             
-            cursor.execute("""
-                CREATE INDEX IF NOT EXISTS idx_conversations_user_session 
+            cursor.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_conversations_user_session
                 ON conversations(user_id, session_id, timestamp DESC)
-            """)
-            
-            cursor.execute("""
-                CREATE INDEX IF NOT EXISTS idx_conversations_timestamp 
+                """
+            )
+
+            cursor.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_conversations_timestamp
                 ON conversations(timestamp DESC)
-            """)
-            
-            cursor.execute("""
-                CREATE INDEX IF NOT EXISTS idx_conversations_emotion 
+                """
+            )
+
+            cursor.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_conversations_emotion
                 ON conversations(emotion)
-            """)
-            
-            cursor.execute("""
-                CREATE INDEX IF NOT EXISTS idx_conversations_intent 
+                """
+            )
+
+            cursor.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_conversations_intent
                 ON conversations(intent)
-            """)
-            
-            cursor.execute("""
-                CREATE INDEX IF NOT EXISTS idx_summaries_user_session 
+                """
+            )
+
+            cursor.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_summaries_user_session
                 ON summaries(user_id, session_id, timestamp DESC)
-            """)
-            
-            # ==================== 장기 메모리 (Core Memory) ====================
-            cursor.execute("""
+                """
+            )
+
+            cursor.execute(
+                """
                 CREATE TABLE IF NOT EXISTS core_memories (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     user_id TEXT NOT NULL DEFAULT 'default',
                     category TEXT NOT NULL,
                     key TEXT NOT NULL,
                     value TEXT NOT NULL,
-                    importance INTEGER DEFAULT 5,
+                    importance INTEGER NOT NULL DEFAULT 5 CHECK (importance >= 1 AND importance <= 10),
                     source TEXT,
                     metadata TEXT,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     UNIQUE(user_id, category, key)
                 )
-            """)
-            
-            cursor.execute("""
-                CREATE INDEX IF NOT EXISTS idx_core_memories_user_category 
+                """
+            )
+
+            cursor.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_core_memories_user_category
                 ON core_memories(user_id, category)
-            """)
-            
-            cursor.execute("""
-                CREATE INDEX IF NOT EXISTS idx_core_memories_importance 
+                """
+            )
+
+            cursor.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_core_memories_importance
                 ON core_memories(importance DESC)
-            """)
-            
-            # ==================== 단기 메모리 (Working Memory) ====================
-            cursor.execute("""
+                """
+            )
+
+            cursor.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_core_memories_key
+                ON core_memories(user_id, category, key)
+                """
+            )
+
+            cursor.execute(
+                """
                 CREATE TABLE IF NOT EXISTS working_memories (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     user_id TEXT NOT NULL DEFAULT 'default',
                     session_id TEXT NOT NULL DEFAULT 'default',
                     topic TEXT NOT NULL,
                     content TEXT NOT NULL,
-                    importance INTEGER DEFAULT 3,
+                    importance INTEGER NOT NULL DEFAULT 3 CHECK (importance >= 1 AND importance <= 10),
                     expires_at DATETIME NOT NULL,
                     metadata TEXT,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
                 )
-            """)
-            
-            cursor.execute("""
-                CREATE INDEX IF NOT EXISTS idx_working_memories_user_session 
+                """
+            )
+
+            cursor.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_working_memories_user_session
                 ON working_memories(user_id, session_id)
-            """)
-            
-            cursor.execute("""
-                CREATE INDEX IF NOT EXISTS idx_working_memories_expires 
+                """
+            )
+
+            cursor.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_working_memories_expires
                 ON working_memories(expires_at)
-            """)
-            
-            cursor.execute("""
-                CREATE INDEX IF NOT EXISTS idx_working_memories_topic 
+                """
+            )
+
+            cursor.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_working_memories_topic
                 ON working_memories(topic)
-            """)
-            
-            cursor.execute("""
-                CREATE VIRTUAL TABLE IF NOT EXISTS conversations_fts 
+                """
+            )
+
+            cursor.execute(
+                """
+                CREATE VIRTUAL TABLE IF NOT EXISTS conversations_fts
                 USING fts5(
-                    user_message, 
+                    user_message,
                     assistant_message,
                     content='conversations',
                     content_rowid='id'
                 )
-            """)
-            
-            cursor.execute("""
-                CREATE TRIGGER IF NOT EXISTS conversations_fts_insert 
-                AFTER INSERT ON conversations 
+                """
+            )
+
+            cursor.execute(
+                """
+                CREATE TRIGGER IF NOT EXISTS conversations_fts_insert
+                AFTER INSERT ON conversations
                 BEGIN
                     INSERT INTO conversations_fts(rowid, user_message, assistant_message)
                     VALUES (new.id, new.user_message, new.assistant_message);
                 END
-            """)
-            
-            cursor.execute("""
-                CREATE TRIGGER IF NOT EXISTS conversations_fts_delete 
-                AFTER DELETE ON conversations 
+                """
+            )
+
+            cursor.execute(
+                """
+                CREATE TRIGGER IF NOT EXISTS conversations_fts_delete
+                AFTER DELETE ON conversations
                 BEGIN
                     DELETE FROM conversations_fts WHERE rowid = old.id;
                 END
-            """)
-            
-            cursor.execute("""
-                CREATE TRIGGER IF NOT EXISTS conversations_fts_update 
-                AFTER UPDATE ON conversations 
+                """
+            )
+
+            cursor.execute(
+                """
+                CREATE TRIGGER IF NOT EXISTS conversations_fts_update
+                AFTER UPDATE ON conversations
                 BEGIN
                     DELETE FROM conversations_fts WHERE rowid = old.id;
                     INSERT INTO conversations_fts(rowid, user_message, assistant_message)
                     VALUES (new.id, new.user_message, new.assistant_message);
                 END
-            """)
+                """
+            )
     
     def close(self):
         """데이터베이스 연결 종료"""

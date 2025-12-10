@@ -37,7 +37,7 @@ class ConversationResponse(BaseModel):
     cached: bool = False
     metadata: Optional[Dict[str, Any]] = None
     created_at: datetime
-    
+
     class Config:
         from_attributes = True
 
@@ -63,7 +63,7 @@ class SummaryResponse(BaseModel):
     start_conversation_id: Optional[int] = None
     end_conversation_id: Optional[int] = None
     created_at: datetime
-    
+
     class Config:
         from_attributes = True
 
@@ -89,11 +89,11 @@ class MemoryStats(BaseModel):
     unique_sessions: int
     first_conversation: Optional[datetime] = None
     last_conversation: Optional[datetime] = None
-    emotions_distribution: Dict[str, int] = {}
-    intents_distribution: Dict[str, int] = {}
+    emotions_distribution: Dict[str, int] = Field(default_factory=dict)
+    intents_distribution: Dict[str, int] = Field(default_factory=dict)
     avg_processing_time: Optional[float] = None
     cache_hit_rate: Optional[float] = None
-    conversations_by_date: Dict[str, int] = {}
+    conversations_by_date: Dict[str, int] = Field(default_factory=dict)
 
 
 class LLMContext(BaseModel):
@@ -159,7 +159,7 @@ class CoreMemoryResponse(BaseModel):
     metadata: Optional[Dict[str, Any]] = None
     created_at: datetime
     updated_at: datetime
-    
+
     class Config:
         from_attributes = True
 
@@ -187,13 +187,13 @@ class WorkingMemoryResponse(BaseModel):
     is_expired: bool = False
     metadata: Optional[Dict[str, Any]] = None
     created_at: datetime
-    
+
     class Config:
         from_attributes = True
 
 
 class MemoryExtraction(BaseModel):
     """LLM이 추출한 메모리 정보"""
-    core_memories: List[CoreMemoryCreate] = []
-    working_memories: List[WorkingMemoryCreate] = []
-    should_update: List[str] = []  # 업데이트할 기존 메모리 키들
+    core_memories: List[CoreMemoryCreate] = Field(default_factory=list)
+    working_memories: List[WorkingMemoryCreate] = Field(default_factory=list)
+    should_update: List[str] = Field(default_factory=list)  # 업데이트할 기존 메모리 키들

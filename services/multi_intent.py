@@ -7,22 +7,26 @@ LunaMultiIntent 서비스 모듈
  - config/models.yaml 의 multi_intent 항목을 읽어와
     로컬 체크포인트 또는 허브 모델을 로드합니다.
  - predict(text: str) 호출 시,
+    한국어 입력을 영어로 번역 후 의도 분석을 수행합니다.
     threshold 이상의 레이블과 점수를 dict로 반환합니다.
     
     2025/07/13
      - 예외처리 추가 및 전체 코드 옵티마이징
+    2025/12/01
+     - 번역 파이프라인 추가 (한국어 -> 영어 -> 의도 분석)
 """
 
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 import torch
 from safetensors.torch import load_file
 from transformers import AutoTokenizer, BitsAndBytesConfig
 from utils.config import load_config_dict
 from models.multiintent_model import MultiIntentClassifier
+from services.translator import TranslatorService
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -40,15 +44,18 @@ class MultiIntentService:
     """
     L.U.N.A. MultiIntent 서비스 클래스
     
-    텍스트 -> 다중 인텐트 확률 분포 예측
+    텍스트 -> 번역 (한국어 -> 영어) -> 다중 인텐트 확률 분포 예측
     """
     
     _model: MultiIntentClassifier | None = None
     _tokenizer: AutoTokenizer | None = None
     
-    def __init__(self) -> None:
+    def __init__(self, translator: Optional[TranslatorService] = None) -> None:
         config = load_config_dict("models")["multi_intent"]
         self.threshold = config.get("threshold", 0.5)
+        self.use_translation = config.get('use_translation', True)
+        self.source_lang = config.get('source_lang', 'ko')
+        self.target_lang = config.get('target_lang', 'en')
 
         # 경로 설정
         self._model_dir = Path(config["model_dir"]).expanduser()
@@ -57,17 +64,21 @@ class MultiIntentService:
         self.id2label = {i: label for i, label in enumerate(self.label_list)}
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+        # 번역 서비스 초기화
+        self.translator = translator or TranslatorService()
+
         if MultiIntentService._model is None or MultiIntentService._tokenizer is None:
             self._load_weights(config)
 
     @torch.inference_mode()
-    def predict(self, text: str) -> Dict[str, float]:
+    def predict(self, text: str, skip_translation: bool = False) -> Dict[str, float]:
         """
         주어진 텍스트에 대해 멀티 인텐트 예측을 수행하고,
         threshold 이상의 결과만 필터링해 반환합니다.
 
         Args:
-            text (str): 입력 문장
+            text (str): 입력 문장 (한국어 또는 영어)
+            skip_translation (bool): True면 번역 생략 (이미 영어인 경우)
 
         Returns:
             dict[str, float]: {intent_label: score} 형태의 딕셔너리
@@ -75,8 +86,22 @@ class MultiIntentService:
         if not text.strip():
             raise MultiIntentError("INTENT_EMPTY_INPUT", "입력 텍스트가 비어 있습니다.")
         
+        input_text = text
+        if self.use_translation and not skip_translation:
+            try:
+                translated = self.translator.translate(
+                    text=text,
+                    from_lang=self.source_lang,
+                    to_lang=self.target_lang
+                )
+                input_text = translated
+                print(f"[MultiIntent] 번역: '{text[:50]}...' -> '{translated[:50]}...'")
+            except Exception as e:
+                print(f"[MultiIntent] 번역 실패, 원문 사용: {e}")
+                input_text = text
+        
         tok = MultiIntentService._tokenizer(
-            text,
+            input_text,
             truncation=True,
             padding="max_length",
             max_length=128,
@@ -88,10 +113,13 @@ class MultiIntentService:
             logits = out["logits"].squeeze(0)
             probs  = torch.sigmoid(logits)
 
-        return {
+        results = {
             self.id2label[i]: round(p.item(), 4)
             for i, p in enumerate(probs) if p.item() >= self.threshold
         }
+        
+        print(f"[MultiIntent] 분석 결과: {results}")
+        return results
         
     def _load_weights(self, config: dict) -> None:
         """모델 / 토크나이저 로드 + torch.compile 설정"""
@@ -100,7 +128,6 @@ class MultiIntentService:
                 str(self._tokenizer_dir)
             )
             
-            # 양자화 설정
             bnb_cfg = None
             if config.get("load_in_4bit"):
                 try:

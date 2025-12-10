@@ -24,6 +24,8 @@ class ASRService:
         self.speech_config.speech_recognition_language = "ko-KR"
         self.speech_config.output_format = speechsdk.OutputFormat.Detailed
         
+        self.speech_config.set_profanity(speechsdk.ProfanityOption.Raw)
+        
         self.push_stream = None
         self.recognizer = None
         
